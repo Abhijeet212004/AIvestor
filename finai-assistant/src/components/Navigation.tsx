@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { Box, Flex, Text, Button, Image, HStack, useDisclosure, IconButton, Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton, VStack } from '@chakra-ui/react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Box, Flex, Text, Button, Image, HStack, useDisclosure, IconButton, Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton, VStack, Avatar, Menu, MenuButton, MenuList, MenuItem, MenuDivider, AvatarBadge } from '@chakra-ui/react';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiMenu, FiHome, FiMessageCircle, FiCompass, FiBookOpen, FiTrendingUp, FiUsers } from 'react-icons/fi';
+import { FiMenu, FiHome, FiMessageCircle, FiCompass, FiBookOpen, FiTrendingUp, FiUsers, FiLogOut, FiUser, FiSettings, FiChevronDown } from 'react-icons/fi';
+import { useAuth } from '../contexts/AuthContext';
 
 const MotionBox = motion(Box);
 
 const Navigation: React.FC = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [isScrolled, setIsScrolled] = useState(false);
+  const { currentUser, logout, userProfile } = useAuth();
+  const navigate = useNavigate();
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -32,6 +35,19 @@ const Navigation: React.FC = () => {
     { name: 'Community', path: '/community', icon: <FiUsers /> },
   ];
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Failed to log out', error);
+    }
+  };
+
+  const handleProfileClick = () => {
+    navigate('/profile');
+  };
+
   return (
     <Box
       as="nav"
@@ -48,7 +64,7 @@ const Navigation: React.FC = () => {
         align="center"
         justify="space-between"
         className={isScrolled ? 'glass-card' : ''}
-        borderBottom={isScrolled ? '1px solid rgba(255, 255, 255, 0.1)' : 'none'}
+        borderBottom={isScrolled ? '1px solid rgba(255, 255, 255, 0.7)' : 'none'}
         backdropFilter={isScrolled ? 'blur(10px)' : 'none'}
         transition="all 0.3s ease"
       >
@@ -81,8 +97,8 @@ const Navigation: React.FC = () => {
                 to={item.path}
                 variant="ghost"
                 leftIcon={item.icon}
-                _hover={{ bg: 'rgba(255, 255, 255, 0.1)' }}
-                _active={{ bg: 'rgba(255, 255, 255, 0.15)' }}
+                _hover={{ bg: 'rgba(255, 255, 255, 1)' }}
+                _active={{ bg: 'rgba(114, 188, 212, 0.73)' }}
               >
                 {item.name}
               </Button>
@@ -91,26 +107,80 @@ const Navigation: React.FC = () => {
         </HStack>
 
         <HStack spacing={4} display={{ base: 'none', md: 'flex' }}>
-          <MotionBox
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            whileHover={{ scale: 1.05 }}
-          >
-            <Button variant="outline" size="md" className="button-3d">
-              Sign In
-            </Button>
-          </MotionBox>
-          <MotionBox
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            whileHover={{ scale: 1.05 }}
-          >
-            <Button variant="solid" size="md" className="neon-glow button-3d">
-              Get Started
-            </Button>
-          </MotionBox>
+          {currentUser ? (
+            <Menu>
+              <MenuButton
+                as={Button}
+                variant="ghost"
+                rightIcon={<FiChevronDown />}
+                ml={4}
+              >
+                <Avatar
+                  size="sm"
+                  src={currentUser.photoURL || undefined}
+                  name={currentUser.displayName || 'User'}
+                >
+                  {userProfile?.isProfileComplete && (
+                    <AvatarBadge boxSize="1.25em" bg="green.500" />
+                  )}
+                </Avatar>
+              </MenuButton>
+              <MenuList bg="darkBlue.800" borderColor="darkBlue.700">
+                <MenuItem
+                  icon={<FiUser />}
+                  onClick={() => navigate('/profile')}
+                >
+                  Edit Profile
+                </MenuItem>
+                <MenuItem
+                  icon={<FiSettings />}
+                  onClick={() => navigate('/settings')}
+                >
+                  Settings
+                </MenuItem>
+                <MenuDivider />
+                <MenuItem
+                  icon={<FiLogOut />}
+                  onClick={handleLogout}
+                >
+                  Logout
+                </MenuItem>
+              </MenuList>
+            </Menu>
+          ) : (
+            <>
+              <MotionBox
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                whileHover={{ scale: 1.05 }}
+              >
+                <Button 
+                  variant="outline" 
+                  size="md" 
+                  className="button-3d"
+                  onClick={() => navigate('/auth')}
+                >
+                  Sign In
+                </Button>
+              </MotionBox>
+              <MotionBox
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                whileHover={{ scale: 1.05 }}
+              >
+                <Button 
+                  variant="solid" 
+                  size="md" 
+                  className="neon-glow button-3d"
+                  onClick={() => navigate('/auth')}
+                >
+                  Get Started
+                </Button>
+              </MotionBox>
+            </>
+          )}
         </HStack>
 
         <IconButton
@@ -124,32 +194,86 @@ const Navigation: React.FC = () => {
         />
 
         <Drawer isOpen={isOpen} placement="right" onClose={onClose}>
-          <DrawerOverlay />
-          <DrawerContent bg="darkBlue.900" color="white">
+          <DrawerOverlay backdropFilter="blur(10px)" />
+          <DrawerContent bg="darkBlue.800">
             <DrawerCloseButton />
             <DrawerHeader borderBottomWidth="1px">Menu</DrawerHeader>
             <DrawerBody>
-              <VStack spacing={4} align="stretch" mt={8}>
+              <VStack spacing={4} align="stretch" mt={4}>
                 {navItems.map((item) => (
                   <Button
                     key={item.name}
                     as={RouterLink}
                     to={item.path}
                     variant="ghost"
-                    justifyContent="flex-start"
                     leftIcon={item.icon}
-                    _hover={{ bg: 'rgba(255, 255, 255, 0.1)' }}
+                    justifyContent="flex-start"
                     onClick={onClose}
                   >
                     {item.name}
                   </Button>
                 ))}
-                <Button variant="outline" w="full" mt={4}>
-                  Sign In
-                </Button>
-                <Button colorScheme="blue" w="full">
-                  Get Started
-                </Button>
+                <Box pt={4} borderTopWidth="1px">
+                  {currentUser ? (
+                    <>
+                      <Flex align="center" mb={4}>
+                        <Avatar 
+                          size="sm" 
+                          src={userProfile?.photoURL || currentUser.photoURL || undefined}
+                          name={userProfile?.displayName || currentUser.displayName || 'User'}
+                          mr={2}
+                        />
+                        <Text>{userProfile?.displayName || currentUser.displayName || currentUser.email}</Text>
+                      </Flex>
+                      <Button
+                        variant="outline"
+                        leftIcon={<FiUser />}
+                        onClick={() => {
+                          navigate('/profile');
+                          onClose();
+                        }}
+                        mb={2}
+                        w="full"
+                      >
+                        Profile
+                      </Button>
+                      <Button
+                        variant="solid"
+                        colorScheme="red"
+                        leftIcon={<FiLogOut />}
+                        onClick={handleLogout}
+                        w="full"
+                      >
+                        Logout
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        mb={2}
+                        w="full"
+                        onClick={() => {
+                          navigate('/auth');
+                          onClose();
+                        }}
+                      >
+                        Sign In
+                      </Button>
+                      <Button
+                        variant="solid"
+                        colorScheme="blue"
+                        w="full"
+                        onClick={() => {
+                          navigate('/auth');
+                          onClose();
+                        }}
+                      >
+                        Get Started
+                      </Button>
+                    </>
+                  )}
+                </Box>
               </VStack>
             </DrawerBody>
           </DrawerContent>

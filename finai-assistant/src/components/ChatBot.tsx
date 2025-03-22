@@ -3,6 +3,15 @@ import { Box, Flex, Text, Input, IconButton, VStack, Avatar, HStack, Spinner, us
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSend, FiMic, FiMaximize, FiMinimize, FiX } from 'react-icons/fi';
 import { useSpring, animated } from 'react-spring';
+// Import LangChain and Gemini packages
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+import { RunnableSequence } from "@langchain/core/runnables";
+import { formatDocumentsAsString } from "langchain/util/document";
+// Firebase imports
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/config'; // Ensure this path is correct
 
 const MotionBox = motion(Box);
 const AnimatedBox = animated(Box);
@@ -12,6 +21,15 @@ interface Message {
   text: string;
   sender: 'user' | 'bot';
   timestamp: Date;
+}
+
+// Interface for user preferences from Firestore
+interface UserPreferences {
+  investmentGoals?: string[];
+  riskTolerance?: string;
+  investmentHorizon?: string;
+  preferredSectors?: string[];
+  preferredAssetClasses?: string[];
 }
 
 const ChatBot: React.FC = () => {
@@ -26,6 +44,8 @@ const ChatBot: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
+  const [chatModel, setChatModel] = useState<ChatGoogleGenerativeAI | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure({ defaultIsOpen: true });
@@ -36,13 +56,73 @@ const ChatBot: React.FC = () => {
     config: { tension: 280, friction: 60 },
   });
 
+  // Initialize the chat model
+  useEffect(() => {
+    // Initialize Gemini model
+    const model = new ChatGoogleGenerativeAI({
+      apiKey: "AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g",
+      modelName: "gemini-pro",
+      temperature: 0.7,
+      maxOutputTokens: 1024,
+    });
+    
+    setChatModel(model);
+    
+    // Fetch user preferences
+    const fetchUserPreferences = async () => {
+      try {
+        // Replace 'currentUserId' with actual user ID from your auth system
+        const userId = 'currentUserId'; // TODO: get actual user ID
+        const userDoc = await getDoc(doc(db, 'users', userId));
+        
+        if (userDoc.exists()) {
+          setUserPreferences(userDoc.data() as UserPreferences);
+        }
+      } catch (error) {
+        console.error("Error fetching user preferences:", error);
+      }
+    };
+    
+    fetchUserPreferences();
+  }, []);
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = () => {
-    if (inputValue.trim() === '') return;
+  const createSystemPrompt = () => {
+    let systemPrompt = `You are FinAI, a sophisticated financial assistant. 
+You provide accurate, helpful and ethical financial advice.
+Always present information clearly and avoid financial jargon unless necessary.
+`;
+
+    // Add user preferences to the system prompt if available
+    if (userPreferences) {
+      systemPrompt += `\nUser preferences:\n`;
+      if (userPreferences.investmentGoals) {
+        systemPrompt += `- Investment goals: ${userPreferences.investmentGoals.join(', ')}\n`;
+      }
+      if (userPreferences.riskTolerance) {
+        systemPrompt += `- Risk tolerance: ${userPreferences.riskTolerance}\n`;
+      }
+      if (userPreferences.investmentHorizon) {
+        systemPrompt += `- Investment horizon: ${userPreferences.investmentHorizon}\n`;
+      }
+      if (userPreferences.preferredSectors) {
+        systemPrompt += `- Preferred sectors: ${userPreferences.preferredSectors.join(', ')}\n`;
+      }
+      if (userPreferences.preferredAssetClasses) {
+        systemPrompt += `- Preferred asset classes: ${userPreferences.preferredAssetClasses.join(', ')}\n`;
+      }
+      systemPrompt += `\nTailor your responses to align with these preferences when appropriate.`;
+    }
+
+    return systemPrompt;
+  };
+
+  const handleSendMessage = async () => {
+    if (inputValue.trim() === '' || !chatModel) return;
     
     // Add user message
     const userMessage: Message = {
@@ -56,25 +136,52 @@ const ChatBot: React.FC = () => {
     setInputValue('');
     setIsTyping(true);
     
-    // Simulate bot response after a delay
-    setTimeout(() => {
-      const mockResponses = [
-        "Based on your risk profile, I'd recommend diversifying your portfolio with 60% in index funds, 30% in blue-chip stocks, and 10% in bonds.",
-        "Mutual funds offer professional management and diversification. For beginners, I'd suggest starting with an index fund that tracks the market.",
-        "The compound interest formula is A = P(1 + r/n)^(nt), where A is the final amount, P is the principal, r is the interest rate, n is the number of times interest is compounded per year, and t is the time in years.",
-        "Dollar-cost averaging means investing a fixed amount regularly, regardless of market fluctuations. This strategy can reduce the impact of volatility on your investments.",
+    try {
+      // Prepare message history
+      const messageHistory = [
+        new SystemMessage(createSystemPrompt()),
       ];
       
+      // Add previous conversation context (limit to last 5 for brevity)
+      const recentMessages = messages.slice(-5);
+      recentMessages.forEach(msg => {
+        if (msg.sender === 'user') {
+          messageHistory.push(new HumanMessage(msg.text));
+        } else if (msg.sender === 'bot') {
+          messageHistory.push(new AIMessage(msg.text));
+        }
+      });
+      
+      // Add the current user message
+      messageHistory.push(new HumanMessage(inputValue));
+      
+      // Get response from Gemini
+      const response = await chatModel.invoke(messageHistory);
+      
+      // Add bot response
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: mockResponses[Math.floor(Math.random() * mockResponses.length)],
+        text: response.content.toString(),
         sender: 'bot',
         timestamp: new Date(),
       };
       
       setMessages((prev) => [...prev, botMessage]);
+    } catch (error) {
+      console.error("Error getting AI response:", error);
+      
+      // Add error message
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "I'm sorry, I encountered an error processing your request. Please try again.",
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+      
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -91,10 +198,10 @@ const ChatBot: React.FC = () => {
   };
 
   const suggestedQuestions = [
-    "What's a good investment strategy for beginners?",
-    "How do I build an emergency fund?",
-    "Explain compound interest to me",
-    "What stocks are trending this week?",
+    "What investment strategy suits my risk profile?",
+    "How should I diversify my portfolio?",
+    "Explain mutual funds vs. ETFs",
+    "What are current market trends?"
   ];
 
   if (!isOpen) {

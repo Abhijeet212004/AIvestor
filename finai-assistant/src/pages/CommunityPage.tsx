@@ -1,14 +1,39 @@
-import React from 'react';
-import { Box, Container, Grid, GridItem, Heading, Text, Flex, Button, HStack, VStack, Icon, SimpleGrid, Avatar, AvatarBadge, Badge, Tag, Tabs, TabList, TabPanels, Tab, TabPanel, Table, Thead, Tbody, Tr, Th, Td, Progress, Divider, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
-import { motion } from 'framer-motion';
-import { FiUsers, FiAward, FiTrendingUp, FiMessageSquare, FiThumbsUp, FiCalendar, FiBriefcase, FiHeart, FiClock, FiChevronDown, FiCheck, FiMoreVertical, FiStar } from 'react-icons/fi';
+import React, { useEffect } from 'react';
+import { Box, Container, Grid, GridItem, Heading, Text, Flex, Button, HStack, VStack, Icon, SimpleGrid, Avatar, AvatarBadge, Badge, Tag, Tabs, TabList, TabPanels, Tab, TabPanel, Table, Thead, Tbody, Tr, Th, Td, Progress, Divider, Menu, MenuButton, MenuList, MenuItem, useColorModeValue } from '@chakra-ui/react';
+import { motion, useAnimation } from 'framer-motion';
+import { FiUsers, FiAward, FiTrendingUp, FiMessageSquare, FiThumbsUp, FiCalendar, FiBriefcase, FiHeart, FiClock, FiChevronDown, FiCheck, FiMoreVertical, FiStar, FiShield, FiTrendingUp as FiTrendingUpIcon, FiDollarSign } from 'react-icons/fi';
 import Navigation from '../components/Navigation';
 import AnimatedCard from '../components/AnimatedCard';
 import StockChart from '../components/StockChart';
+import ProtectedFeature from '../components/ProtectedFeature';
 
+// Enhanced motion components with premium animations
 const MotionBox = motion(Box);
+const MotionFlex = motion(Flex);
+const MotionText = motion(Text);
+
+// Premium color constants
+const tealGradient = "linear-gradient(135deg, #0BC5EA 0%, #2C7A7B 100%)";
+const goldGradient = "linear-gradient(135deg, #F6E05E 0%, #B7791F 100%)";
+const greenGradient = "linear-gradient(135deg, #48BB78 0%, #276749 100%)";
+const premiumBg = "linear-gradient(135deg, #1A202C 0%, #2D3748 100%)";
+const glowEffect = "0px 0px 15px rgba(72, 187, 120, 0.15)";
+const cardHoverTransition = { duration: 0.3, ease: "easeOut" };
 
 const CommunityPage: React.FC = () => {
+  const controls = useAnimation();
+  
+  useEffect(() => {
+    controls.start({ opacity: 1, y: 0 });
+  }, [controls]);
+
+  // Premium color theme
+  const cardBg = "rgba(26, 32, 44, 0.8)";
+  const highlightColor = "#F6AD55"; // Gold/amber
+  const accentColor = "#48BB78"; // Green
+  const dangerColor = "#E53E3E"; // Red
+  const tableBgHover = "rgba(72, 187, 120, 0.08)";
+
   // Mock leaderboard data
   const leaderboardData = [
     { 
@@ -172,82 +197,295 @@ const CommunityPage: React.FC = () => {
 
   // Render component
   return (
-    <Box minH="100vh" bg="darkBlue.900">
-      <Navigation />
+    <Box minH="100vh" bg={premiumBg}>
+      {/* Custom Page Header */}
+      <Box 
+        position="fixed" 
+        top="0" 
+        left="0" 
+        right="0" 
+        zIndex="999"
+        overflow="hidden"
+      >
+        {/* Background decorative elements */}
+        <Box
+          position="absolute"
+          top="-10px"
+          left="-10px"
+          right="-10px"
+          bottom="-10px"
+          bgGradient={tealGradient}
+          opacity="0.95"
+          filter="blur(0px)"
+          transform="skewY(-1deg)"
+          boxShadow="lg"
+        />
+        
+        {/* Light pattern overlay */}
+        <Box
+          position="absolute"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          opacity="0.1"
+          backgroundImage="url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"
+        />
+        
+        {/* Navigation Component */}
+        <Navigation />
+        
+        {/* Decorative community icon */}
+        <MotionBox
+          position="absolute"
+          top="0"
+          right="20px"
+          opacity="0.2"
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 0.2, scale: 1 }}
+          transition={{ duration: 1 }}
+        >
+          <Icon as={FiUsers} color="white" boxSize="80px" />
+        </MotionBox>
+      </Box>
       
-      <Box as="main" pt="80px">
+      <Box as="main" pt="120px" pb="40px">
         <Container maxW="container.xl" px={4}>
-          {/* Header Section */}
-          <Box mb={10}>
-            <Heading as="h1" size="xl" mb={4} className="text-gradient">
+          {/* Header Section with enhanced styling */}
+          <Box mb={10} position="relative">
+            <MotionBox
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              position="absolute"
+              top="-30px"
+              left="-10px"
+              width="150px"
+              height="150px"
+              borderRadius="full"
+              bg="rgba(72, 187, 120, 0.1)"
+              filter="blur(25px)"
+              zIndex="-1"
+            />
+            
+            <MotionText
+              as={Heading}
+              size="xl"
+              mb={4}
+              bgGradient={tealGradient}
+              bgClip="text"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              display="inline-flex"
+              alignItems="center"
+            >
+              <Icon as={FiUsers} mr={3} />
               Community & Leaderboard
-            </Heading>
-            <Text fontSize="lg" opacity={0.8} maxW="800px">
+            </MotionText>
+            
+            <MotionText 
+              fontSize="lg" 
+              opacity={0.9} 
+              maxW="800px"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+            >
               Connect with other investors, share insights, learn from top performers, and participate in investment challenges.
-            </Text>
+            </MotionText>
           </Box>
 
           {/* User Status */}
-          <MotionBox
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="glass-card"
-            p={6}
-            mb={10}
+          <ProtectedFeature
+            featureName="Community Features"
+            fallback={
+              <MotionBox
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="glass-card"
+                p={6}
+                borderRadius="xl"
+                textAlign="center"
+                mb={8}
+              >
+                <Icon as={FiUsers} boxSize={12} color="teal.400" mb={4} />
+                <Heading size="md" mb={2}>Join Our Investment Community</Heading>
+                <Text mb={4}>Sign in to connect with other investors, share insights, and participate in investment challenges.</Text>
+                <Button colorScheme="teal">Sign In to Join</Button>
+              </MotionBox>
+            }
           >
-            <Flex direction={{ base: 'column', md: 'row' }} justify="space-between" align="center">
-              <Flex align="center" mb={{ base: 6, md: 0 }}>
-                <Avatar size="xl" src="https://randomuser.me/api/portraits/men/12.jpg" mr={6}>
-                  <AvatarBadge boxSize="1.25em" bg="green.500" />
-                </Avatar>
-                <Box>
-                  <Heading size="md">Welcome, Ajay!</Heading>
-                  <HStack mt={2}>
-                    <Badge colorScheme="purple" px={2} py={1} borderRadius="full">
-                      Silver Investor
-                    </Badge>
-                    <Text fontSize="sm" color="gray.400">Rank #87</Text>
-                  </HStack>
-                  <HStack mt={3}>
-                    <Tag size="sm" colorScheme="blue" borderRadius="full">
-                      <Icon as={FiAward} mr={1} />
-                      4,280 points
-                    </Tag>
-                    <Tag size="sm" colorScheme="green" borderRadius="full">
-                      <Icon as={FiTrendingUp} mr={1} />
-                      11.2% return
-                    </Tag>
-                    <Tag size="sm" colorScheme="orange" borderRadius="full">
-                      <Icon as={FiClock} mr={1} />
-                      7 day streak
-                    </Tag>
-                  </HStack>
-                </Box>
+            <MotionBox
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="glass-card"
+              p={6}
+              mb={10}
+              boxShadow={glowEffect}
+              borderColor={accentColor}
+              borderWidth="1px"
+              _hover={{ 
+                boxShadow: "0px 0px 20px rgba(72, 187, 120, 0.25)",
+                transition: "all 0.3s ease-in-out"
+              }}
+            >
+              <Flex direction={{ base: 'column', md: 'row' }} justify="space-between" align="center">
+                <Flex align="center" mb={{ base: 6, md: 0 }}>
+                  <Box position="relative">
+                    <MotionBox
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                    >
+                      <Avatar size="xl" src="https://randomuser.me/api/portraits/men/12.jpg" mr={6}>
+                        <AvatarBadge boxSize="1.25em" bg={accentColor} />
+                      </Avatar>
+                    </MotionBox>
+                    <Box
+                      position="absolute"
+                      top="-5px"
+                      right="10px"
+                      h="20px"
+                      w="20px"
+                      borderRadius="full"
+                      bgGradient={goldGradient}
+                      boxShadow="0px 0px 10px rgba(247, 211, 66, 0.5)"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                    >
+                      <Icon as={FiShield} color="white" boxSize="0.6em" />
+                    </Box>
+                  </Box>
+                  <Box>
+                    <MotionHeading 
+                      size="md" 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      Welcome, Ajay!
+                    </MotionHeading>
+                    <HStack mt={2}>
+                      <Badge 
+                        px={2} 
+                        py={1} 
+                        borderRadius="full" 
+                        bgGradient={goldGradient}
+                        color="gray.800"
+                      >
+                        Silver Investor
+                      </Badge>
+                      <Text fontSize="sm" color="gray.300">Rank #87</Text>
+                    </HStack>
+                    <HStack mt={3}>
+                      <Tag size="sm" bgGradient={goldGradient} color="gray.800" borderRadius="full">
+                        <Icon as={FiAward} mr={1} />
+                        4,280 points
+                      </Tag>
+                      <Tag size="sm" bgGradient={greenGradient} color="white" borderRadius="full">
+                        <Icon as={FiTrendingUp} mr={1} />
+                        11.2% return
+                      </Tag>
+                      <Tag size="sm" colorScheme="orange" borderRadius="full">
+                        <Icon as={FiClock} mr={1} />
+                        7 day streak
+                      </Tag>
+                    </HStack>
+                  </Box>
+                </Flex>
+                
+                <HStack spacing={4}>
+                  <Button 
+                    bgGradient={greenGradient} 
+                    color="white" 
+                    leftIcon={<FiUsers />} 
+                    size="sm"
+                    _hover={{ 
+                      bgGradient: "linear-gradient(135deg, #38A169 0%, #276749 100%)",
+                      transform: "translateY(-2px)",
+                      boxShadow: "0px 4px 12px rgba(72, 187, 120, 0.3)"
+                    }}
+                    transition="all 0.3s ease"
+                  >
+                    Find Friends
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    leftIcon={<FiMessageSquare />} 
+                    size="sm"
+                    borderColor={accentColor}
+                    color={accentColor}
+                    _hover={{
+                      bg: "rgba(72, 187, 120, 0.1)",
+                      transform: "translateY(-2px)"
+                    }}
+                    transition="all 0.3s ease"
+                  >
+                    Create Post
+                  </Button>
+                </HStack>
               </Flex>
-              
-              <HStack spacing={4}>
-                <Button colorScheme="blue" leftIcon={<FiUsers />} size="sm">
-                  Find Friends
-                </Button>
-                <Button variant="outline" leftIcon={<FiMessageSquare />} size="sm">
-                  Create Post
-                </Button>
-              </HStack>
-            </Flex>
-          </MotionBox>
+            </MotionBox>
+          </ProtectedFeature>
 
           {/* Main Content Tabs */}
-          <Tabs colorScheme="blue" variant="soft-rounded" mb={10}>
-            <TabList mb={6} overflowX="auto" py={2} css={{
-              scrollbarWidth: 'none',
-              '&::-webkit-scrollbar': { display: 'none' },
-              '-ms-overflow-style': 'none'
-            }}>
-              <Tab>Leaderboard</Tab>
-              <Tab>Community Posts</Tab>
-              <Tab>Events</Tab>
-              <Tab>Challenges</Tab>
+          <Tabs 
+            colorScheme="green" 
+            variant="soft-rounded" 
+            mb={10}
+          >
+            <TabList 
+              mb={6} 
+              overflowX="auto" 
+              py={2} 
+              css={{
+                scrollbarWidth: 'none',
+                '&::-webkit-scrollbar': { display: 'none' },
+                '-ms-overflow-style': 'none'
+              }}
+              borderBottom="1px solid"
+              borderColor="rgba(72, 187, 120, 0.2)"
+            >
+              <MotionTab 
+                _selected={{ color: 'white', bg: accentColor }}
+                _hover={{ bg: "rgba(72, 187, 120, 0.1)" }}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                Leaderboard
+              </MotionTab>
+              <MotionTab 
+                _selected={{ color: 'white', bg: accentColor }}
+                _hover={{ bg: "rgba(72, 187, 120, 0.1)" }}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                Community Posts
+              </MotionTab>
+              <MotionTab 
+                _selected={{ color: 'white', bg: accentColor }}
+                _hover={{ bg: "rgba(72, 187, 120, 0.1)" }}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                Events
+              </MotionTab>
+              <MotionTab 
+                _selected={{ color: 'white', bg: accentColor }}
+                _hover={{ bg: "rgba(72, 187, 120, 0.1)" }}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                Challenges
+              </MotionTab>
             </TabList>
 
             <TabPanels>
@@ -255,10 +493,26 @@ const CommunityPage: React.FC = () => {
               <TabPanel p={0}>
                 <Grid templateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap={6}>
                   <GridItem>
-                    <Box className="glass-card" p={0} overflow="hidden">
+                    <MotionBox 
+                      className="glass-card" 
+                      p={0} 
+                      overflow="hidden"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.5 }}
+                      boxShadow={glowEffect}
+                      borderColor="rgba(72, 187, 120, 0.3)"
+                      borderWidth="1px"
+                    >
                       <Box p={4} borderBottom="1px solid" borderColor="whiteAlpha.200">
                         <Flex justify="space-between" align="center">
-                          <Heading size="md">Top Performers</Heading>
+                          <Heading 
+                            size="md" 
+                            bgGradient={goldGradient} 
+                            bgClip="text"
+                          >
+                            Top Performers
+                          </Heading>
                           <HStack>
                             <Menu>
                               <MenuButton as={Button} size="sm" rightIcon={<FiChevronDown />} variant="outline">
@@ -286,7 +540,7 @@ const CommunityPage: React.FC = () => {
                       </Box>
                       
                       <Table variant="simple">
-                        <Thead bg="whiteAlpha.100">
+                        <Thead bg="rgba(72, 187, 120, 0.1)">
                           <Tr>
                             <Th>Rank</Th>
                             <Th>Investor</Th>
@@ -297,8 +551,18 @@ const CommunityPage: React.FC = () => {
                           </Tr>
                         </Thead>
                         <Tbody>
-                          {leaderboardData.map((investor) => (
-                            <Tr key={investor.id} _hover={{ bg: "whiteAlpha.100" }}>
+                          {leaderboardData.map((investor, index) => (
+                            <MotionTr 
+                              key={investor.id} 
+                              _hover={{ bg: tableBgHover }}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: index * 0.1, duration: 0.3 }}
+                              whileHover={{ 
+                                backgroundColor: tableBgHover,
+                                transition: { duration: 0.2 }
+                              }}
+                            >
                               <Td>
                                 <Flex align="center" justify="center" w="36px" h="36px" borderRadius="full" bg="whiteAlpha.200">
                                   <Text fontWeight="bold">{investor.rank}</Text>
@@ -338,15 +602,27 @@ const CommunityPage: React.FC = () => {
                               <Td>
                                 <Button size="xs" variant="ghost">View Profile</Button>
                               </Td>
-                            </Tr>
+                            </MotionTr>
                           ))}
                         </Tbody>
                       </Table>
                       
                       <Box p={4} textAlign="center">
-                        <Button variant="outline" size="sm">View Full Leaderboard</Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          borderColor={accentColor}
+                          color={accentColor}
+                          _hover={{
+                            bg: "rgba(72, 187, 120, 0.1)",
+                            transform: "scale(1.05)"
+                          }}
+                          transition="all 0.3s ease"
+                        >
+                          View Full Leaderboard
+                        </Button>
                       </Box>
-                    </Box>
+                    </MotionBox>
                   </GridItem>
                   
                   <GridItem>
@@ -615,6 +891,11 @@ const CommunityPage: React.FC = () => {
     </Box>
   );
 };
+
+// Define MotionHeading and MotionTab components
+const MotionHeading = motion(Heading);
+const MotionTab = motion(Tab);
+const MotionTr = motion(Tr);
 
 // Missing component from the Chakra UI import
 const Spacer = () => <Box flex="1" />;

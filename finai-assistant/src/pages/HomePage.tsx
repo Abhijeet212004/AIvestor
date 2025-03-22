@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Box, Flex, Text, Button, Container, Grid, GridItem, Heading, VStack, HStack, Icon, SimpleGrid, useBreakpointValue } from '@chakra-ui/react';
 import { motion, useAnimation, useInView } from 'framer-motion';
-import { FiArrowRight, FiBarChart2, FiBookOpen, FiMessageCircle, FiTrendingUp, FiUsers, FiShield } from 'react-icons/fi';
+import { FiArrowRight, FiBarChart2, FiBookOpen, FiMessageCircle, FiTrendingUp, FiUsers, FiShield, FiHome } from 'react-icons/fi';
 import { Link as RouterLink } from 'react-router-dom';
 import Navigation from '../components/Navigation';
 import ChatBot from '../components/ChatBot';
@@ -77,9 +77,61 @@ const HomePage: React.FC = () => {
 
   const isMobile = useBreakpointValue({ base: true, md: false });
 
+  // Header gradient for home page
+  const homeGradient = "linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%)";
+
   return (
     <Box minH="100vh">
-      <Navigation />
+      {/* Custom Page Header */}
+      <Box 
+        position="fixed" 
+        top="0" 
+        left="0" 
+        right="0" 
+        zIndex="999"
+        overflow="hidden"
+      >
+        {/* Background decorative elements */}
+        <Box
+          position="absolute"
+          top="-10px"
+          left="-10px"
+          right="-10px"
+          bottom="-10px"
+          bgGradient={homeGradient}
+          opacity="0.95"
+          filter="blur(0px)"
+          transform="skewY(-1deg)"
+          boxShadow="lg"
+        />
+        
+        {/* Light pattern overlay */}
+        <Box
+          position="absolute"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          opacity="0.1"
+          backgroundImage="url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"
+        />
+        
+        {/* Navigation Component */}
+        <Navigation />
+        
+        {/* Decorative home icon */}
+        <MotionBox
+          position="absolute"
+          top="0"
+          right="20px"
+          opacity="0.2"
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 0.2, scale: 1 }}
+          transition={{ duration: 1 }}
+        >
+          <Icon as={FiHome} color="white" boxSize="80px" />
+        </MotionBox>
+      </Box>
       
       {/* Hero Section */}
       <Box
@@ -91,6 +143,7 @@ const HomePage: React.FC = () => {
         justifyContent="center"
         overflow="hidden"
         bg="darkBlue.900"
+        pt="40px"
       >
         {/* Animated background with tickers */}
         <Box

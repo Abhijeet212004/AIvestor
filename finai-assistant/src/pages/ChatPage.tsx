@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { FiMessageCircle, FiSearch, FiTrendingUp, FiDollarSign, FiPieChart, FiShield, FiBarChart2, FiBookOpen } from 'react-icons/fi';
 import Navigation from '../components/Navigation';
 import AnimatedCard from '../components/AnimatedCard';
+import ChatBot from '../components/ChatBot';
+import ProtectedFeature from '../components/ProtectedFeature';
 
 const MotionBox = motion(Box);
 
@@ -89,9 +91,18 @@ const ChatPage: React.FC = () => {
 
   return (
     <Box minH="100vh" bg="darkBlue.900">
-      <Navigation />
+      <Box 
+        position="fixed" 
+        top="0" 
+        left="0" 
+        right="0" 
+        zIndex="999"
+        overflow="hidden"
+      >
+        <Navigation />
+      </Box>
       
-      <Box as="main" pt="80px">
+      <Box as="main" pt="120px">
         <Container maxW="container.xl" px={4}>
           <Grid templateColumns={{ base: "1fr", lg: "280px 1fr" }} gap={8}>
             {/* Topics Sidebar */}
@@ -147,51 +158,29 @@ const ChatPage: React.FC = () => {
               </VStack>
             </GridItem>
             
-            {/* Chat Interface Area */}
+            {/* Chat Interface */}
             <GridItem>
-              {selectedTopic ? (
-                <ChatInterface 
-                  topic={chatTopics.find(t => t.id === selectedTopic)!} 
-                  onBack={() => isMobile ? setSelectedTopic(null) : null}
-                />
-              ) : (
-                <Box display={{ base: 'block', lg: 'none' }}>
-                  <Text textAlign="center" fontSize="lg" mb={6} opacity={0.7}>
-                    Select a topic to start chatting with FinAI
-                  </Text>
-                </Box>
-              )}
-              
-              {!selectedTopic && (
-                <Box 
-                  display={{ lg: 'flex' }} 
-                  alignItems="center" 
-                  justifyContent="center" 
-                  flexDirection="column"
-                  h="calc(100vh - 200px)"
-                  textAlign="center"
-                  p={8}
-                  className="glass-card"
-                >
-                  <Icon as={FiMessageCircle} boxSize={16} color="blue.400" mb={6} />
-                  <Heading size="lg" className="text-gradient" mb={4}>
-                    Your AI Financial Assistant
-                  </Heading>
-                  <Text fontSize="lg" maxW="600px" opacity={0.8} mb={6}>
-                    Select a topic from the sidebar to start a conversation with FinAI.
-                    Ask questions about investing, get personalized financial advice, or
-                    learn about complex financial concepts in simple terms.
-                  </Text>
-                  <HStack spacing={3} wrap="wrap" justifyContent="center">
-                    <Tag colorScheme="blue" size="lg">Investing</Tag>
-                    <Tag colorScheme="purple" size="lg">Retirement</Tag>
-                    <Tag colorScheme="green" size="lg">Budgeting</Tag>
-                    <Tag colorScheme="orange" size="lg">Stocks</Tag>
-                    <Tag colorScheme="pink" size="lg">Financial Terms</Tag>
-                    <Tag colorScheme="cyan" size="lg">Market Trends</Tag>
-                  </HStack>
-                </Box>
-              )}
+              <ProtectedFeature 
+                featureName="AI Chat Assistant"
+                fallback={
+                  <MotionBox
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="glass-card"
+                    p={6}
+                    borderRadius="xl"
+                    textAlign="center"
+                  >
+                    <Icon as={FiMessageCircle} boxSize={12} color="blue.400" mb={4} />
+                    <Heading size="md" mb={2}>AI Chat Assistant</Heading>
+                    <Text mb={4}>Sign in to chat with our AI financial assistant and get personalized investment advice.</Text>
+                    <Button colorScheme="blue">Sign In to Chat</Button>
+                  </MotionBox>
+                }
+              >
+                <ChatBot />
+              </ProtectedFeature>
             </GridItem>
           </Grid>
         </Container>

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Box, Container, Grid, GridItem, Heading, Text, Flex, Button, HStack, VStack, Icon, SimpleGrid, Slider, SliderTrack, SliderFilledTrack, SliderThumb, Select, Badge, Avatar, Divider, Progress } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
-import { FiFilter, FiStar, FiDollarSign, FiTrendingUp, FiShield, FiBarChart2, FiInfo, FiExternalLink, FiHeart } from 'react-icons/fi';
+import { FiFilter, FiStar, FiDollarSign, FiTrendingUp, FiShield, FiBarChart2, FiInfo, FiExternalLink, FiHeart, FiCompass } from 'react-icons/fi';
 import Navigation from '../components/Navigation';
 import AnimatedCard from '../components/AnimatedCard';
 import StockChart from '../components/StockChart';
+import ProtectedFeature from '../components/ProtectedFeature';
 
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
@@ -171,17 +172,87 @@ const DiscoveryPage: React.FC = () => {
     }
   };
 
+  // Header gradient for discovery page
+  const discoveryGradient = "linear-gradient(135deg, #F59E0B 0%, #EC4899 100%)";
+
   return (
     <Box minH="100vh" bg="darkBlue.900">
-      <Navigation />
+      {/* Custom Page Header */}
+      <Box 
+        position="fixed" 
+        top="0" 
+        left="0" 
+        right="0" 
+        zIndex="999"
+        overflow="hidden"
+      >
+        {/* Background decorative elements */}
+        <Box
+          position="absolute"
+          top="-10px"
+          left="-10px"
+          right="-10px"
+          bottom="-10px"
+          bgGradient={discoveryGradient}
+          opacity="0.95"
+          filter="blur(0px)"
+          transform="skewY(-1deg)"
+          boxShadow="lg"
+        />
+        
+        {/* Light pattern overlay */}
+        <Box
+          position="absolute"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          opacity="0.1"
+          backgroundImage="url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"
+        />
+        
+        {/* Navigation Component */}
+        <Navigation />
+        
+        {/* Decorative discover icon */}
+        <MotionBox
+          position="absolute"
+          top="0"
+          right="20px"
+          opacity="0.2"
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 0.2, scale: 1 }}
+          transition={{ duration: 1 }}
+        >
+          <Icon as={FiCompass} color="white" boxSize="80px" />
+        </MotionBox>
+      </Box>
       
-      <Box as="main" pt="80px">
+      <Box as="main" pt="120px">
         <Container maxW="container.xl" px={4}>
           {/* Header Section */}
-          <Box mb={8} textAlign="center">
-            <Heading as="h1" size="xl" mb={4} className="text-gradient">
+          <Box mb={8} textAlign="center" position="relative">
+            <MotionBox
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              position="absolute"
+              top="-30px"
+              left="50%"
+              transform="translateX(-50%)"
+              width="150px"
+              height="150px"
+              borderRadius="full"
+              bg="rgba(245, 158, 11, 0.1)"
+              filter="blur(25px)"
+              zIndex="-1"
+            />
+            
+            <Heading as="h1" size="xl" mb={4} className="text-gradient" display="inline-flex" alignItems="center">
+              <Icon as={FiCompass} mr={3} />
               Discover Investment Opportunities
             </Heading>
+            
             <Text fontSize="lg" opacity={0.8} maxW="800px" mx="auto">
               Find personalized investment recommendations based on your risk tolerance, investment goals,
               and time horizon. Our AI analyzes thousands of options to match you with the best choices.
@@ -192,133 +263,155 @@ const DiscoveryPage: React.FC = () => {
           <Grid templateColumns={{ base: "1fr", lg: "300px 1fr" }} gap={8}>
             {/* Filters Panel */}
             <GridItem>
-              <MotionBox
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
-                className="glass-card"
-                p={6}
-                display={{ base: showFilters ? 'block' : 'none', lg: 'block' }}
-                position={{ lg: 'sticky' }}
-                top={{ lg: '100px' }}
-              >
-                <Flex justify="space-between" align="center" mb={6}>
-                  <Heading size="md">
-                    <Flex align="center">
-                      <Icon as={FiFilter} mr={2} />
-                      Investment Filters
-                    </Flex>
-                  </Heading>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    display={{ base: 'block', lg: 'none' }}
-                    onClick={() => setShowFilters(false)}
+              <ProtectedFeature
+                featureName="Investment Discovery"
+                fallback={
+                  <MotionBox
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="glass-card"
+                    p={6}
+                    display={{ base: showFilters ? 'block' : 'none', lg: 'block' }}
+                    position={{ lg: 'sticky' }}
+                    top={{ lg: '100px' }}
+                    textAlign="center"
                   >
-                    Close
-                  </Button>
-                </Flex>
-
-                <VStack spacing={6} align="stretch">
-                  {/* Risk Tolerance Slider */}
-                  <Box>
-                    <Text fontWeight="medium" mb={2}>Risk Tolerance</Text>
-                    <Flex justify="space-between" mb={2}>
-                      <Text fontSize="sm" color="gray.400">Conservative</Text>
-                      <Text fontSize="sm" color="gray.400">Aggressive</Text>
-                    </Flex>
-                    <Slider 
-                      min={1} 
-                      max={5} 
-                      step={1} 
-                      value={riskLevel} 
-                      onChange={val => setRiskLevel(val)}
-                      colorScheme="blue"
+                    <Icon as={FiCompass} boxSize={12} color="orange.400" mb={4} />
+                    <Heading size="md" mb={2}>Discover Investments</Heading>
+                    <Text mb={4}>Sign in to discover personalized investment opportunities based on your profile.</Text>
+                    <Button colorScheme="orange">Sign In to Discover</Button>
+                  </MotionBox>
+                }
+              >
+                <MotionBox
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="glass-card"
+                  p={6}
+                  display={{ base: showFilters ? 'block' : 'none', lg: 'block' }}
+                  position={{ lg: 'sticky' }}
+                  top={{ lg: '100px' }}
+                >
+                  <Flex justify="space-between" align="center" mb={6}>
+                    <Heading size="md">
+                      <Flex align="center">
+                        <Icon as={FiFilter} mr={2} />
+                        Investment Filters
+                      </Flex>
+                    </Heading>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      display={{ base: 'block', lg: 'none' }}
+                      onClick={() => setShowFilters(false)}
                     >
-                      <SliderTrack>
-                        <SliderFilledTrack />
-                      </SliderTrack>
-                      <SliderThumb boxSize={6} bg="brand.500">
-                        <Box fontSize="xs" color="white">{riskLevel}</Box>
-                      </SliderThumb>
-                    </Slider>
-                    <Text mt={2} fontSize="sm" fontWeight="medium">
-                      Selected: <span className="text-gradient">{getRiskLevelText(riskLevel)}</span>
-                    </Text>
-                  </Box>
+                      Close
+                    </Button>
+                  </Flex>
 
-                  {/* Investment Type */}
-                  <Box>
-                    <Text fontWeight="medium" mb={2}>Investment Type</Text>
-                    <Select 
-                      bg="whiteAlpha.100" 
-                      border="none" 
-                      value={investmentType}
-                      onChange={(e) => setInvestmentType(e.target.value)}
-                    >
-                      <option value="all">All Types</option>
-                      <option value="mutual-fund">Mutual Funds</option>
-                      <option value="etf">ETFs</option>
-                      <option value="index-fund">Index Funds</option>
-                      <option value="stock">Individual Stocks</option>
-                    </Select>
-                  </Box>
+                  <VStack spacing={6} align="stretch">
+                    {/* Risk Tolerance Slider */}
+                    <Box>
+                      <Text fontWeight="medium" mb={2}>Risk Tolerance</Text>
+                      <Flex justify="space-between" mb={2}>
+                        <Text fontSize="sm" color="gray.400">Conservative</Text>
+                        <Text fontSize="sm" color="gray.400">Aggressive</Text>
+                      </Flex>
+                      <Slider 
+                        min={1} 
+                        max={5} 
+                        step={1} 
+                        value={riskLevel} 
+                        onChange={val => setRiskLevel(val)}
+                        colorScheme="blue"
+                      >
+                        <SliderTrack>
+                          <SliderFilledTrack />
+                        </SliderTrack>
+                        <SliderThumb boxSize={6} bg="brand.500">
+                          <Box fontSize="xs" color="white">{riskLevel}</Box>
+                        </SliderThumb>
+                      </Slider>
+                      <Text mt={2} fontSize="sm" fontWeight="medium">
+                        Selected: <span className="text-gradient">{getRiskLevelText(riskLevel)}</span>
+                      </Text>
+                    </Box>
 
-                  {/* Investment Term */}
-                  <Box>
-                    <Text fontWeight="medium" mb={2}>Investment Term</Text>
-                    <Select 
-                      bg="whiteAlpha.100" 
-                      border="none"
-                      value={investmentTerm}
-                      onChange={(e) => setInvestmentTerm(e.target.value)}
-                    >
-                      <option value="all">Any Term</option>
-                      <option value="short">Short Term (&lt; 2 years)</option>
-                      <option value="medium">Medium Term (2-5 years)</option>
-                      <option value="long">Long Term (5+ years)</option>
-                    </Select>
-                  </Box>
+                    {/* Investment Type */}
+                    <Box>
+                      <Text fontWeight="medium" mb={2}>Investment Type</Text>
+                      <Select 
+                        bg="whiteAlpha.100" 
+                        border="none" 
+                        value={investmentType}
+                        onChange={(e) => setInvestmentType(e.target.value)}
+                      >
+                        <option value="all">All Types</option>
+                        <option value="mutual-fund">Mutual Funds</option>
+                        <option value="etf">ETFs</option>
+                        <option value="index-fund">Index Funds</option>
+                        <option value="stock">Individual Stocks</option>
+                      </Select>
+                    </Box>
 
-                  <Divider borderColor="whiteAlpha.300" />
+                    {/* Investment Term */}
+                    <Box>
+                      <Text fontWeight="medium" mb={2}>Investment Term</Text>
+                      <Select 
+                        bg="whiteAlpha.100" 
+                        border="none"
+                        value={investmentTerm}
+                        onChange={(e) => setInvestmentTerm(e.target.value)}
+                      >
+                        <option value="all">Any Term</option>
+                        <option value="short">Short Term (&lt; 2 years)</option>
+                        <option value="medium">Medium Term (2-5 years)</option>
+                        <option value="long">Long Term (5+ years)</option>
+                      </Select>
+                    </Box>
 
-                  {/* AI Recommendations */}
-                  <Box p={4} bg="whiteAlpha.100" borderRadius="md">
-                    <Flex align="center" mb={3}>
-                      <Icon as={FiInfo} color="blue.400" mr={2} />
-                      <Text fontWeight="medium">AI Recommendation</Text>
-                    </Flex>
-                    <Text fontSize="sm" opacity={0.8} mb={3}>
-                      Based on your profile and market conditions, we recommend:
-                    </Text>
-                    <VStack align="stretch" spacing={3}>
-                      <Flex justify="space-between">
-                        <Text fontSize="sm">Stocks</Text>
-                        <Text fontSize="sm" fontWeight="medium">40%</Text>
+                    <Divider borderColor="whiteAlpha.300" />
+
+                    {/* AI Recommendations */}
+                    <Box p={4} bg="whiteAlpha.100" borderRadius="md">
+                      <Flex align="center" mb={3}>
+                        <Icon as={FiInfo} color="blue.400" mr={2} />
+                        <Text fontWeight="medium">AI Recommendation</Text>
                       </Flex>
-                      <Progress value={40} size="sm" colorScheme="blue" borderRadius="full" mb={1} />
-                      
-                      <Flex justify="space-between">
-                        <Text fontSize="sm">Bonds</Text>
-                        <Text fontSize="sm" fontWeight="medium">30%</Text>
-                      </Flex>
-                      <Progress value={30} size="sm" colorScheme="purple" borderRadius="full" mb={1} />
-                      
-                      <Flex justify="space-between">
-                        <Text fontSize="sm">ETFs</Text>
-                        <Text fontSize="sm" fontWeight="medium">20%</Text>
-                      </Flex>
-                      <Progress value={20} size="sm" colorScheme="green" borderRadius="full" mb={1} />
-                      
-                      <Flex justify="space-between">
-                        <Text fontSize="sm">Cash</Text>
-                        <Text fontSize="sm" fontWeight="medium">10%</Text>
-                      </Flex>
-                      <Progress value={10} size="sm" colorScheme="orange" borderRadius="full" mb={1} />
-                    </VStack>
-                  </Box>
-                </VStack>
-              </MotionBox>
+                      <Text fontSize="sm" opacity={0.8} mb={3}>
+                        Based on your profile and market conditions, we recommend:
+                      </Text>
+                      <VStack align="stretch" spacing={3}>
+                        <Flex justify="space-between">
+                          <Text fontSize="sm">Stocks</Text>
+                          <Text fontSize="sm" fontWeight="medium">40%</Text>
+                        </Flex>
+                        <Progress value={40} size="sm" colorScheme="blue" borderRadius="full" mb={1} />
+                        
+                        <Flex justify="space-between">
+                          <Text fontSize="sm">Bonds</Text>
+                          <Text fontSize="sm" fontWeight="medium">30%</Text>
+                        </Flex>
+                        <Progress value={30} size="sm" colorScheme="purple" borderRadius="full" mb={1} />
+                        
+                        <Flex justify="space-between">
+                          <Text fontSize="sm">ETFs</Text>
+                          <Text fontSize="sm" fontWeight="medium">20%</Text>
+                        </Flex>
+                        <Progress value={20} size="sm" colorScheme="green" borderRadius="full" mb={1} />
+                        
+                        <Flex justify="space-between">
+                          <Text fontSize="sm">Cash</Text>
+                          <Text fontSize="sm" fontWeight="medium">10%</Text>
+                        </Flex>
+                        <Progress value={10} size="sm" colorScheme="orange" borderRadius="full" mb={1} />
+                      </VStack>
+                    </Box>
+                  </VStack>
+                </MotionBox>
+              </ProtectedFeature>
 
               {/* Mobile Filter Toggle */}
               <Button 

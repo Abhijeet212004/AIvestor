@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Container, Grid, GridItem, Heading, Text, Flex, Button, HStack, VStack, Icon, SimpleGrid, Progress, Tag, Divider, Stat, StatLabel, StatNumber, StatHelpText, StatArrow, Tabs, TabList, TabPanels, Tab, TabPanel, Table, Thead, Tbody, Tr, Th, Td, Badge, Menu, MenuButton, MenuList, MenuItem, Input, Select, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, FormControl, FormLabel, NumberInput, NumberInputField, useDisclosure, useColorModeValue, InputGroup, InputLeftElement } from '@chakra-ui/react';
+import { Box, Container, Grid, GridItem, Heading, Text, Flex, Button, HStack, VStack, Icon, SimpleGrid, Progress, Tag, Divider, Stat, StatLabel, StatNumber, StatHelpText, StatArrow, Tabs, TabList, TabPanels, Tab, TabPanel, Table, Thead, Tbody, Tr, Th, Td, Badge, Menu, MenuButton, MenuList, MenuItem, Input, Select, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, FormControl, FormLabel, NumberInput, NumberInputField, useDisclosure, useColorModeValue, InputGroup, InputLeftElement, NumberInputStepper, NumberIncrementStepper, NumberDecrementStepper, Switch } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiPieChart, FiActivity, FiClock, FiArrowUp, FiArrowDown, FiChevronDown, FiPlus, FiSearch, FiRefreshCw, FiSettings, FiAlertCircle, FiCalendar } from 'react-icons/fi';
 import Navigation from '../components/Navigation';
 import StockChart from '../components/StockChart';
 import AnimatedCard from '../components/AnimatedCard';
+import ProtectedFeature from '../components/ProtectedFeature';
 
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
@@ -150,120 +151,210 @@ const SimulatorPage: React.FC = () => {
     { name: 'Communication Services', value: 12.52, color: '#8B5CF6' }
   ];
 
+  // Header gradient for simulator page - money/investment theme
+  const simulatorGradient = "linear-gradient(135deg, #10B981 0%, #3B82F6 100%)";
+
   return (
     <Box minH="100vh" bg="darkBlue.900">
-      <Navigation />
+      {/* Custom Page Header */}
+      <Box 
+        position="fixed" 
+        top="0" 
+        left="0" 
+        right="0" 
+        zIndex="999"
+        overflow="hidden"
+      >
+        {/* Background decorative elements */}
+        <Box
+          position="absolute"
+          top="-10px"
+          left="-10px"
+          right="-10px"
+          bottom="-10px"
+          bgGradient={simulatorGradient}
+          opacity="0.95"
+          filter="blur(0px)"
+          transform="skewY(-1deg)"
+          boxShadow="lg"
+        />
+        
+        {/* Light pattern overlay */}
+        <Box
+          position="absolute"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          opacity="0.1"
+          backgroundImage="url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"
+        />
+        
+        {/* Navigation Component */}
+        <Navigation />
+        
+        {/* Decorative investment icon */}
+        <MotionBox
+          position="absolute"
+          top="0"
+          right="20px"
+          opacity="0.2"
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 0.2, scale: 1 }}
+          transition={{ duration: 1 }}
+        >
+          <Icon as={FiTrendingUp} color="white" boxSize="80px" />
+        </MotionBox>
+      </Box>
       
-      <Box as="main" pt="80px">
+      <Box as="main" pt="120px">
         <Container maxW="container.xl" px={4}>
-          {/* Header Section */}
-          <Box mb={10}>
-            <Heading as="h1" size="xl" mb={4} className="text-gradient">
+          {/* Header Section with enhanced styling */}
+          <Box mb={10} position="relative">
+            <MotionBox
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              position="absolute"
+              top="-30px"
+              left="-10px"
+              width="150px"
+              height="150px"
+              borderRadius="full"
+              bg="rgba(16, 185, 129, 0.1)"
+              filter="blur(25px)"
+              zIndex="-1"
+            />
+            
+            <Heading as="h1" size="xl" mb={4} className="text-gradient" display="inline-flex" alignItems="center">
+              <Icon as={FiTrendingUp} mr={3} />
               Virtual Investment Simulator
             </Heading>
+            
             <Text fontSize="lg" opacity={0.8} maxW="800px">
               Practice investing without risking real money. Start with ₹10,000 virtual cash, build a portfolio, and track your performance over time.
             </Text>
           </Box>
 
           {/* Portfolio Summary */}
-          <MotionBox
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="glass-card"
-            p={6}
-            mb={10}
+          <ProtectedFeature
+            featureName="Investment Simulator"
+            fallback={
+              <MotionBox
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="glass-card"
+                p={6}
+                borderRadius="xl"
+                textAlign="center"
+                mb={8}
+              >
+                <Icon as={FiTrendingUp} boxSize={12} color="green.400" mb={4} />
+                <Heading size="md" mb={2}>Investment Simulator</Heading>
+                <Text mb={4}>Sign in to access our virtual investment simulator and practice trading without risking real money.</Text>
+                <Button colorScheme="green">Sign In to Start Investing</Button>
+              </MotionBox>
+            }
           >
-            <Grid templateColumns={{ base: "1fr", lg: "1fr 2fr" }} gap={6}>
-              <GridItem>
-                <VStack align="stretch" spacing={6}>
-                  <Heading size="md">Your Virtual Portfolio</Heading>
-                  
-                  <Box>
-                    <Text color="gray.400">Total Value</Text>
-                    <Flex align="baseline">
-                      <Heading size="xl">₹{mockPortfolio.totalValue.toLocaleString()}</Heading>
-                      <Stat ml={4}>
+            <MotionBox
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="glass-card"
+              p={6}
+              mb={8}
+            >
+              <Grid templateColumns={{ base: "1fr", lg: "1fr 2fr" }} gap={6}>
+                <GridItem>
+                  <VStack align="stretch" spacing={6}>
+                    <Heading size="md">Your Virtual Portfolio</Heading>
+                    
+                    <Box>
+                      <Text color="gray.400">Total Value</Text>
+                      <Flex align="baseline">
+                        <Heading size="xl">₹{mockPortfolio.totalValue.toLocaleString()}</Heading>
+                        <Stat ml={4}>
+                          <StatHelpText>
+                            <StatArrow type={mockPortfolio.returnPercentage >= 0 ? 'increase' : 'decrease'} />
+                            {mockPortfolio.returnPercentage}% overall
+                          </StatHelpText>
+                        </Stat>
+                      </Flex>
+                    </Box>
+                    
+                    <SimpleGrid columns={2} spacing={4}>
+                      <Stat>
+                        <StatLabel>Cash Available</StatLabel>
+                        <StatNumber>₹{mockPortfolio.cash.toLocaleString()}</StatNumber>
+                      </Stat>
+                      <Stat>
+                        <StatLabel>Daily Change</StatLabel>
+                        <StatNumber color={mockPortfolio.dailyChange >= 0 ? 'green.400' : 'red.400'}>
+                          ₹{Math.abs(mockPortfolio.dailyChange).toLocaleString()}
+                        </StatNumber>
                         <StatHelpText>
-                          <StatArrow type={mockPortfolio.returnPercentage >= 0 ? 'increase' : 'decrease'} />
-                          {mockPortfolio.returnPercentage}% overall
+                          <StatArrow type={mockPortfolio.dailyChange >= 0 ? 'increase' : 'decrease'} />
+                          {Math.abs(mockPortfolio.dailyChangePercentage)}%
                         </StatHelpText>
                       </Stat>
-                    </Flex>
-                  </Box>
-                  
-                  <SimpleGrid columns={2} spacing={4}>
-                    <Stat>
-                      <StatLabel>Cash Available</StatLabel>
-                      <StatNumber>₹{mockPortfolio.cash.toLocaleString()}</StatNumber>
-                    </Stat>
-                    <Stat>
-                      <StatLabel>Daily Change</StatLabel>
-                      <StatNumber color={mockPortfolio.dailyChange >= 0 ? 'green.400' : 'red.400'}>
-                        ₹{Math.abs(mockPortfolio.dailyChange).toLocaleString()}
-                      </StatNumber>
-                      <StatHelpText>
-                        <StatArrow type={mockPortfolio.dailyChange >= 0 ? 'increase' : 'decrease'} />
-                        {Math.abs(mockPortfolio.dailyChangePercentage)}%
-                      </StatHelpText>
-                    </Stat>
-                  </SimpleGrid>
-                  
-                  <Box>
-                    <Flex justify="space-between" mb={2}>
-                      <Text fontSize="sm">Initial Investment</Text>
-                      <Text fontSize="sm">₹{mockPortfolio.initialInvestment.toLocaleString()}</Text>
-                    </Flex>
-                    <Flex justify="space-between" mb={2}>
-                      <Text fontSize="sm">Current Value</Text>
-                      <Text fontSize="sm">₹{mockPortfolio.totalValue.toLocaleString()}</Text>
-                    </Flex>
-                    <Flex justify="space-between" mb={4}>
-                      <Text fontSize="sm">Total Return</Text>
-                      <Text 
-                        fontSize="sm" 
-                        fontWeight="bold"
-                        color={mockPortfolio.returnPercentage >= 0 ? 'green.400' : 'red.400'}
-                      >
-                        ₹{(mockPortfolio.totalValue - mockPortfolio.initialInvestment).toLocaleString()} ({mockPortfolio.returnPercentage}%)
-                      </Text>
-                    </Flex>
+                    </SimpleGrid>
                     
-                    <Button size="sm" leftIcon={<FiRefreshCw />} variant="outline" width="full">
-                      Reset Portfolio
-                    </Button>
-                  </Box>
-                </VStack>
-              </GridItem>
-              
-              <GridItem>
-                <Flex direction="column" h="100%">
-                  <Heading size="md" mb={4}>Portfolio Performance</Heading>
-                  <Box flex="1" minH="200px">
-                    <StockChart 
-                      data={[
-                        { date: 'Jan 1', price: 100 },
-                        { date: 'Feb 1', price: 120 },
-                        { date: 'Mar 1', price: 110 },
-                        { date: 'Apr 1', price: 130 },
-                        { date: 'May 1', price: 150 }
-                      ]}
-                    />
-                  </Box>
-                  <HStack spacing={6} mt={6} justify="center">
-                    <Button size="sm" variant="ghost">1D</Button>
-                    <Button size="sm" variant="ghost">1W</Button>
-                    <Button size="sm" variant="ghost">1M</Button>
-                    <Button size="sm" variant="ghost" colorScheme="blue">3M</Button>
-                    <Button size="sm" variant="ghost">YTD</Button>
-                    <Button size="sm" variant="ghost">1Y</Button>
-                    <Button size="sm" variant="ghost">ALL</Button>
-                  </HStack>
-                </Flex>
-              </GridItem>
-            </Grid>
-          </MotionBox>
+                    <Box>
+                      <Flex justify="space-between" mb={2}>
+                        <Text fontSize="sm">Initial Investment</Text>
+                        <Text fontSize="sm">₹{mockPortfolio.initialInvestment.toLocaleString()}</Text>
+                      </Flex>
+                      <Flex justify="space-between" mb={2}>
+                        <Text fontSize="sm">Current Value</Text>
+                        <Text fontSize="sm">₹{mockPortfolio.totalValue.toLocaleString()}</Text>
+                      </Flex>
+                      <Flex justify="space-between" mb={4}>
+                        <Text fontSize="sm">Total Return</Text>
+                        <Text 
+                          fontSize="sm" 
+                          fontWeight="bold"
+                          color={mockPortfolio.returnPercentage >= 0 ? 'green.400' : 'red.400'}
+                        >
+                          ₹{(mockPortfolio.totalValue - mockPortfolio.initialInvestment).toLocaleString()} ({mockPortfolio.returnPercentage}%)
+                        </Text>
+                      </Flex>
+                      
+                      <Button size="sm" leftIcon={<FiRefreshCw />} variant="outline" width="full">
+                        Reset Portfolio
+                      </Button>
+                    </Box>
+                  </VStack>
+                </GridItem>
+                
+                <GridItem>
+                  <Flex direction="column" h="100%">
+                    <Heading size="md" mb={4}>Portfolio Performance</Heading>
+                    <Box flex="1" minH="200px">
+                      <StockChart 
+                        data={[
+                          { date: 'Jan 1', price: 100 },
+                          { date: 'Feb 1', price: 120 },
+                          { date: 'Mar 1', price: 110 },
+                          { date: 'Apr 1', price: 130 },
+                          { date: 'May 1', price: 150 }
+                        ]}
+                      />
+                    </Box>
+                    <HStack spacing={6} mt={6} justify="center">
+                      <Button size="sm" variant="ghost">1D</Button>
+                      <Button size="sm" variant="ghost">1W</Button>
+                      <Button size="sm" variant="ghost">1M</Button>
+                      <Button size="sm" variant="ghost" colorScheme="blue">3M</Button>
+                      <Button size="sm" variant="ghost">YTD</Button>
+                      <Button size="sm" variant="ghost">1Y</Button>
+                      <Button size="sm" variant="ghost">ALL</Button>
+                    </HStack>
+                  </Flex>
+                </GridItem>
+              </Grid>
+            </MotionBox>
+          </ProtectedFeature>
 
           {/* Portfolio Details Tabs */}
           <Box mb={10}>

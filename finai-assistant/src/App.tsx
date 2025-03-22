@@ -9,6 +9,11 @@ import DiscoveryPage from './pages/DiscoveryPage';
 import EducationPage from './pages/EducationPage';
 import SimulatorPage from './pages/SimulatorPage';
 import CommunityPage from './pages/CommunityPage';
+import AuthPage from './pages/AuthPage';
+import ProfilePage from './pages/ProfilePage';
+
+// Import context providers
+import { AuthProvider } from './contexts/AuthContext';
 
 // Custom theme
 const theme = extendTheme({
@@ -86,14 +91,18 @@ const App: React.FC = () => {
   return (
     <ChakraProvider theme={theme}>
       <Router>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/discovery" element={<DiscoveryPage />} />
-          <Route path="/education" element={<EducationPage />} />
-          <Route path="/simulator" element={<SimulatorPage />} />
-          <Route path="/community" element={<CommunityPage />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/discovery" element={<DiscoveryPage />} />
+            <Route path="/education" element={<EducationPage />} />
+            <Route path="/simulator" element={<SimulatorPage />} />
+            <Route path="/community" element={<CommunityPage />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+          </Routes>
+        </AuthProvider>
       </Router>
     </ChakraProvider>
   );

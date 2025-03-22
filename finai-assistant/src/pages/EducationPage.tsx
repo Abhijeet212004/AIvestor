@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { FiAward, FiBookOpen, FiCheck, FiCheckCircle, FiClock, FiDollarSign, FiLayers, FiPercent, FiPieChart, FiTrendingUp, FiX } from 'react-icons/fi';
 import Navigation from '../components/Navigation';
 import AnimatedCard from '../components/AnimatedCard';
+import ProtectedFeature from '../components/ProtectedFeature';
 
 const MotionBox = motion(Box);
 
@@ -185,23 +186,94 @@ const EducationPage: React.FC = () => {
     });
   };
 
+  // Header gradient for education page
+  const educationGradient = "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)";
+
   return (
     <Box minH="100vh" bg="darkBlue.900">
-      <Navigation />
+      {/* Custom Page Header */}
+      <Box 
+        position="fixed" 
+        top="0" 
+        left="0" 
+        right="0" 
+        zIndex="999"
+        overflow="hidden"
+      >
+        {/* Background decorative elements */}
+        <Box
+          position="absolute"
+          top="-10px"
+          left="-10px"
+          right="-10px"
+          bottom="-10px"
+          bgGradient={educationGradient}
+          opacity="0.95"
+          filter="blur(0px)"
+          transform="skewY(-1deg)"
+          boxShadow="lg"
+        />
+        
+        {/* Light pattern overlay */}
+        <Box
+          position="absolute"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          opacity="0.1"
+          backgroundImage="url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"
+        />
+        
+        {/* Navigation Component */}
+        <Navigation />
+        
+        {/* Decorative education icon */}
+        <MotionBox
+          position="absolute"
+          top="0"
+          right="20px"
+          opacity="0.2"
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 0.2, scale: 1 }}
+          transition={{ duration: 1 }}
+        >
+          <Icon as={FiBookOpen} color="white" boxSize="80px" />
+        </MotionBox>
+      </Box>
       
-      <Box as="main" pt="80px">
+      <Box as="main" pt="120px">
         <Container maxW="container.xl" px={4}>
-          {/* Header Section */}
+          {/* Header Section with enhanced styling */}
           <MotionBox
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             textAlign="center"
             mb={10}
+            position="relative"
           >
-            <Heading as="h1" size="xl" mb={4} className="text-gradient">
+            <MotionBox
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+              position="absolute"
+              top="-30px"
+              left="50%"
+              transform="translateX(-50%)"
+              width="150px"
+              height="150px"
+              borderRadius="full"
+              bg="rgba(139, 92, 246, 0.1)"
+              filter="blur(25px)"
+              zIndex="-1"
+            />
+            
+            <Heading as="h1" size="xl" mb={4} className="text-gradient" display="inline-flex" alignItems="center">
+              <Icon as={FiBookOpen} mr={3} />
               Financial Education Center
             </Heading>
+            
             <Text fontSize="lg" opacity={0.8} maxW="800px" mx="auto">
               Expand your financial knowledge with our interactive courses and quizzes.
               Track your progress and earn badges as you master financial concepts.
@@ -209,91 +281,112 @@ const EducationPage: React.FC = () => {
           </MotionBox>
 
           {/* User Progress Section */}
-          <AnimatedCard p={6} mb={10}>
-            <Grid templateColumns={{ base: "1fr", md: "2fr 1fr" }} gap={6}>
-              <GridItem>
-                <Heading size="md" mb={4}>Your Learning Progress</Heading>
-                <Grid templateColumns={{ base: "1fr", sm: "1fr 1fr" }} gap={4}>
-                  <VStack align="start" spacing={3}>
-                    <Text>Course Completion</Text>
-                    <HStack w="100%">
-                      <Progress 
-                        value={(userProgress.completedCourses / userProgress.totalCourses) * 100} 
-                        size="sm" 
-                        w="full" 
-                        colorScheme="blue" 
-                        borderRadius="full"
-                      />
-                      <Text fontSize="sm" whiteSpace="nowrap">
-                        {userProgress.completedCourses}/{userProgress.totalCourses}
-                      </Text>
-                    </HStack>
-                    
-                    <Text>Quizzes Passed</Text>
-                    <HStack w="100%">
-                      <Progress 
-                        value={(userProgress.completedQuizzes / userProgress.totalQuizzes) * 100} 
-                        size="sm" 
-                        w="full" 
-                        colorScheme="green" 
-                        borderRadius="full"
-                      />
-                      <Text fontSize="sm" whiteSpace="nowrap">
-                        {userProgress.completedQuizzes}/{userProgress.totalQuizzes}
-                      </Text>
-                    </HStack>
-                    
-                    <Text>Next Badge Progress</Text>
-                    <HStack w="100%">
-                      <Progress 
-                        value={(userProgress.earnedPoints / userProgress.nextBadgePoints) * 100} 
-                        size="sm" 
-                        w="full" 
-                        colorScheme="purple" 
-                        borderRadius="full"
-                      />
-                      <Text fontSize="sm" whiteSpace="nowrap">
-                        {userProgress.earnedPoints}/{userProgress.nextBadgePoints}
-                      </Text>
-                    </HStack>
-                  </VStack>
-                  
-                  <Flex direction="column" justify="center" align={{ base: "start", sm: "center" }}>
-                    <VStack spacing={2}>
-                      <HStack spacing={2}>
-                        <Icon as={FiAward} color="yellow.400" boxSize={8} />
-                        <Text fontSize="3xl" fontWeight="bold" className="text-gradient">
-                          {userProgress.earnedPoints}
+          <ProtectedFeature
+            featureName="Financial Education"
+            fallback={
+              <MotionBox
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="glass-card"
+                p={6}
+                borderRadius="xl"
+                textAlign="center"
+                mb={8}
+              >
+                <Icon as={FiBookOpen} boxSize={12} color="purple.400" mb={4} />
+                <Heading size="md" mb={2}>Financial Education Center</Heading>
+                <Text mb={4}>Sign in to access our interactive courses and track your learning progress.</Text>
+                <Button colorScheme="purple">Sign In to Learn</Button>
+              </MotionBox>
+            }
+          >
+            <AnimatedCard p={6} mb={10}>
+              <Grid templateColumns={{ base: "1fr", md: "2fr 1fr" }} gap={6}>
+                <GridItem>
+                  <Heading size="md" mb={4}>Your Learning Progress</Heading>
+                  <Grid templateColumns={{ base: "1fr", sm: "1fr 1fr" }} gap={4}>
+                    <VStack align="start" spacing={3}>
+                      <Text>Course Completion</Text>
+                      <HStack w="100%">
+                        <Progress 
+                          value={(userProgress.completedCourses / userProgress.totalCourses) * 100} 
+                          size="sm" 
+                          w="full" 
+                          colorScheme="blue" 
+                          borderRadius="full"
+                        />
+                        <Text fontSize="sm" whiteSpace="nowrap">
+                          {userProgress.completedCourses}/{userProgress.totalCourses}
                         </Text>
                       </HStack>
-                      <Text fontSize="sm" opacity={0.8}>Total Learning Points</Text>
                       
-                      <HStack mt={4} spacing={2}>
-                        <Icon as={FiClock} color="blue.400" />
-                        <Text fontWeight="medium">
-                          {userProgress.streakDays} day streak!
+                      <Text>Quizzes Passed</Text>
+                      <HStack w="100%">
+                        <Progress 
+                          value={(userProgress.completedQuizzes / userProgress.totalQuizzes) * 100} 
+                          size="sm" 
+                          w="full" 
+                          colorScheme="green" 
+                          borderRadius="full"
+                        />
+                        <Text fontSize="sm" whiteSpace="nowrap">
+                          {userProgress.completedQuizzes}/{userProgress.totalQuizzes}
+                        </Text>
+                      </HStack>
+                      
+                      <Text>Next Badge Progress</Text>
+                      <HStack w="100%">
+                        <Progress 
+                          value={(userProgress.earnedPoints / userProgress.nextBadgePoints) * 100} 
+                          size="sm" 
+                          w="full" 
+                          colorScheme="purple" 
+                          borderRadius="full"
+                        />
+                        <Text fontSize="sm" whiteSpace="nowrap">
+                          {userProgress.earnedPoints}/{userProgress.nextBadgePoints}
                         </Text>
                       </HStack>
                     </VStack>
+                    
+                    <Flex direction="column" justify="center" align={{ base: "start", sm: "center" }}>
+                      <VStack spacing={2}>
+                        <HStack spacing={2}>
+                          <Icon as={FiAward} color="yellow.400" boxSize={8} />
+                          <Text fontSize="3xl" fontWeight="bold" className="text-gradient">
+                            {userProgress.earnedPoints}
+                          </Text>
+                        </HStack>
+                        <Text fontSize="sm" opacity={0.8}>Total Learning Points</Text>
+                        
+                        <HStack mt={4} spacing={2}>
+                          <Icon as={FiClock} color="blue.400" />
+                          <Text fontWeight="medium">
+                            {userProgress.streakDays} day streak!
+                          </Text>
+                        </HStack>
+                      </VStack>
+                    </Flex>
+                  </Grid>
+                </GridItem>
+                
+                <GridItem bg="whiteAlpha.100" p={4} borderRadius="md">
+                  <Text fontWeight="medium" mb={3}>Earned Badges</Text>
+                  <Flex gap={2} flexWrap="wrap">
+                    {userProgress.badges.map((badge, index) => (
+                      <Tag key={index} size="lg" colorScheme={index === 0 ? "blue" : "purple"} p={2}>
+                        <HStack spacing={2}>
+                          <Icon as={FiAward} />
+                          <Text>{badge}</Text>
+                        </HStack>
+                      </Tag>
+                    ))}
                   </Flex>
-                </Grid>
-              </GridItem>
-              
-              <GridItem bg="whiteAlpha.100" p={4} borderRadius="md">
-                <Text fontWeight="medium" mb={3}>Earned Badges</Text>
-                <Flex gap={2} flexWrap="wrap">
-                  {userProgress.badges.map((badge, index) => (
-                    <Tag key={index} size="lg" colorScheme={index === 0 ? "blue" : "purple"} p={2}>
-                      <HStack spacing={2}>
-                        <Icon as={FiAward} />
-                        <Text>{badge}</Text>
-                      </HStack>
-                    </Tag>
-                  ))}
-                </Flex>
-              </GridItem>
-            </Grid>
-          </AnimatedCard>
+                </GridItem>
+              </Grid>
+            </AnimatedCard>
+          </ProtectedFeature>
 
           {/* Courses Section */}
           <Heading size="lg" mb={6}>Learning Modules</Heading>
