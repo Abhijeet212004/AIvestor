@@ -3,15 +3,10 @@ import { Box, Flex, Text, Input, IconButton, VStack, Avatar, HStack, Spinner, us
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSend, FiMic, FiMaximize, FiMinimize, FiX } from 'react-icons/fi';
 import { useSpring, animated } from 'react-spring';
-// Import LangChain and Gemini packages
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
-import { StringOutputParser } from "@langchain/core/output_parsers";
-import { RunnableSequence } from "@langchain/core/runnables";
-import { formatDocumentsAsString } from "langchain/util/document";
 // Firebase imports
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config'; // Ensure this path is correct
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const MotionBox = motion(Box);
 const AnimatedBox = animated(Box);
@@ -45,7 +40,6 @@ const ChatBot: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
-  const [chatModel, setChatModel] = useState<ChatGoogleGenerativeAI | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure({ defaultIsOpen: true });
@@ -56,18 +50,8 @@ const ChatBot: React.FC = () => {
     config: { tension: 280, friction: 60 },
   });
 
-  // Initialize the chat model
+  // Initialize and fetch user preferences
   useEffect(() => {
-    // Initialize Gemini model
-    const model = new ChatGoogleGenerativeAI({
-      apiKey: "AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g",
-      modelName: "gemini-pro",
-      temperature: 0.7,
-      maxOutputTokens: 1024,
-    });
-    
-    setChatModel(model);
-    
     // Fetch user preferences
     const fetchUserPreferences = async () => {
       try {
@@ -77,9 +61,26 @@ const ChatBot: React.FC = () => {
         
         if (userDoc.exists()) {
           setUserPreferences(userDoc.data() as UserPreferences);
+        } else {
+          // Set sample preferences for testing if user has none
+          setUserPreferences({
+            investmentGoals: ['Retirement', 'Wealth growth'],
+            riskTolerance: 'Moderate',
+            investmentHorizon: 'Long-term (10+ years)',
+            preferredSectors: ['Technology', 'Healthcare'],
+            preferredAssetClasses: ['Stocks', 'ETFs', 'Bonds']
+          });
         }
       } catch (error) {
         console.error("Error fetching user preferences:", error);
+        // Set default preferences even on error
+        setUserPreferences({
+          investmentGoals: ['Retirement'],
+          riskTolerance: 'Moderate',
+          investmentHorizon: 'Medium-term (5-10 years)',
+          preferredSectors: ['Technology'],
+          preferredAssetClasses: ['ETFs']
+        });
       }
     };
     
@@ -91,38 +92,8 @@ const ChatBot: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const createSystemPrompt = () => {
-    let systemPrompt = `You are FinAI, a sophisticated financial assistant. 
-You provide accurate, helpful and ethical financial advice.
-Always present information clearly and avoid financial jargon unless necessary.
-`;
-
-    // Add user preferences to the system prompt if available
-    if (userPreferences) {
-      systemPrompt += `\nUser preferences:\n`;
-      if (userPreferences.investmentGoals) {
-        systemPrompt += `- Investment goals: ${userPreferences.investmentGoals.join(', ')}\n`;
-      }
-      if (userPreferences.riskTolerance) {
-        systemPrompt += `- Risk tolerance: ${userPreferences.riskTolerance}\n`;
-      }
-      if (userPreferences.investmentHorizon) {
-        systemPrompt += `- Investment horizon: ${userPreferences.investmentHorizon}\n`;
-      }
-      if (userPreferences.preferredSectors) {
-        systemPrompt += `- Preferred sectors: ${userPreferences.preferredSectors.join(', ')}\n`;
-      }
-      if (userPreferences.preferredAssetClasses) {
-        systemPrompt += `- Preferred asset classes: ${userPreferences.preferredAssetClasses.join(', ')}\n`;
-      }
-      systemPrompt += `\nTailor your responses to align with these preferences when appropriate.`;
-    }
-
-    return systemPrompt;
-  };
-
   const handleSendMessage = async () => {
-    if (inputValue.trim() === '' || !chatModel) return;
+    if (inputValue.trim() === '') return;
     
     // Add user message
     const userMessage: Message = {
@@ -137,31 +108,48 @@ Always present information clearly and avoid financial jargon unless necessary.
     setIsTyping(true);
     
     try {
-      // Prepare message history
-      const messageHistory = [
-        new SystemMessage(createSystemPrompt()),
-      ];
-      
-      // Add previous conversation context (limit to last 5 for brevity)
-      const recentMessages = messages.slice(-5);
-      recentMessages.forEach(msg => {
-        if (msg.sender === 'user') {
-          messageHistory.push(new HumanMessage(msg.text));
-        } else if (msg.sender === 'bot') {
-          messageHistory.push(new AIMessage(msg.text));
+      // Create system prompt with user preferences
+      let systemPrompt = `You are FinAI, a sophisticated financial assistant. 
+You provide accurate, helpful and ethical financial advice.
+Always present information clearly and avoid financial jargon unless necessary.
+`;
+
+      // Format user preferences in a more structured way
+      let userPreferencesText = '';
+      if (userPreferences) {
+        userPreferencesText = 'User preferences:\n';
+        if (userPreferences.investmentGoals && userPreferences.investmentGoals.length > 0) {
+          userPreferencesText += `- Investment goals: ${userPreferences.investmentGoals.join(', ')}\n`;
         }
-      });
+        if (userPreferences.riskTolerance) {
+          userPreferencesText += `- Risk tolerance: ${userPreferences.riskTolerance}\n`;
+        }
+        if (userPreferences.investmentHorizon) {
+          userPreferencesText += `- Investment horizon: ${userPreferences.investmentHorizon}\n`;
+        }
+        if (userPreferences.preferredSectors && userPreferences.preferredSectors.length > 0) {
+          userPreferencesText += `- Preferred sectors: ${userPreferences.preferredSectors.join(', ')}\n`;
+        }
+        if (userPreferences.preferredAssetClasses && userPreferences.preferredAssetClasses.length > 0) {
+          userPreferencesText += `- Preferred asset classes: ${userPreferences.preferredAssetClasses.join(', ')}\n`;
+        }
+      } else {
+        // Provide default guidance if no preferences set
+        userPreferencesText = 'User has not set specific investment preferences yet. Provide general advice and suggest setting up a profile.';
+      }
+
+      console.log("Sending request to Gemini API with prompt:", `${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
       
-      // Add the current user message
-      messageHistory.push(new HumanMessage(inputValue));
-      
-      // Get response from Gemini
-      const response = await chatModel.invoke(messageHistory);
+      const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+      const result = await model.generateContent(`${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
+      const botResponse = result.response.text();
       
       // Add bot response
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: response.content.toString(),
+        text: botResponse,
         sender: 'bot',
         timestamp: new Date(),
       };
@@ -170,10 +158,10 @@ Always present information clearly and avoid financial jargon unless necessary.
     } catch (error) {
       console.error("Error getting AI response:", error);
       
-      // Add error message
+      // Add a more descriptive error message
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "I'm sorry, I encountered an error processing your request. Please try again.",
+        text: `I'm sorry, I encountered an error processing your request. Technical details: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
         sender: 'bot',
         timestamp: new Date(),
       };

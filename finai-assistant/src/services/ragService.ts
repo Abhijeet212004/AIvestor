@@ -1,70 +1,75 @@
-import { RunnableSequence } from "@langchain/core/runnables";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { PromptTemplate } from "@langchain/core/prompts";
-import { StringOutputParser } from "@langchain/core/output_parsers";
-import { searchDocuments } from "./documentService";
-import { formatDocumentsAsString } from "langchain/util/document";
+import { searchDocuments, formatDocumentsAsString } from "./documentService";
 
 // Gemini API Key
 const GEMINI_API_KEY = "AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g";
 
-// Initialize the LLM
-const llm = new ChatGoogleGenerativeAI({
-  apiKey: GEMINI_API_KEY,
-  modelName: "gemini-pro",
-  temperature: 0.7,
-  maxOutputTokens: 1024,
-});
-
-// System prompt for the RAG chain
-const SYSTEM_TEMPLATE = `You are FinAI, a sophisticated financial assistant powered by the latest AI technology.
+// System prompt template for the RAG implementation
+const createSystemPrompt = (context: string, preferences: string, question: string): string => {
+  return `You are FinAI, a sophisticated financial assistant powered by the latest AI technology.
 Your goal is to provide accurate, helpful and ethical financial advice.
 
 Use the following pieces of retrieved context to answer the user's question. 
 If you don't know the answer or the context doesn't provide the necessary information, 
 just say that you don't know, don't try to make up an answer.
 
-Context: {context}
+Context: ${context}
 
-User preferences: {preferences}
+User preferences: ${preferences}
 
 When answering, provide thoughtful analysis and clear explanations. 
 Reference specific information from the context when applicable.
 Always present information clearly and avoid financial jargon unless necessary.
 
-User's question: {question}
-`;
-
-const promptTemplate = PromptTemplate.fromTemplate(SYSTEM_TEMPLATE);
-
-// Create RAG chain
-export const createRagChain = () => {
-  const ragChain = RunnableSequence.from([
-    {
-      context: async (input: { question: string; preferences: string }) => {
-        const docs = await searchDocuments(input.question);
-        return formatDocumentsAsString(docs);
-      },
-      question: (input: { question: string; preferences: string }) => input.question,
-      preferences: (input: { question: string; preferences: string }) => input.preferences,
-    },
-    promptTemplate,
-    llm,
-    new StringOutputParser(),
-  ]);
-
-  return ragChain;
+User's question: ${question}`;
 };
 
-// Process a query through the RAG chain
+// Process a query through the RAG approach
 export const processQuery = async (
   query: string, 
   userPreferences: string = ""
-) => {
-  const chain = createRagChain();
-  const response = await chain.invoke({
-    question: query,
-    preferences: userPreferences,
-  });
-  return response;
+): Promise<string> => {
+  try {
+    // 1. Search for relevant documents
+    const docs = await searchDocuments(query);
+    
+    // 2. Format documents as context string
+    const context = formatDocumentsAsString(docs);
+    
+    // 3. Create the prompt with context
+    const prompt = createSystemPrompt(context, userPreferences, query);
+    
+    // 4. Call Gemini API directly
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + GEMINI_API_KEY,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: prompt }]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024,
+          }
+        })
+      }
+    );
+    
+    const data = await response.json();
+    
+    if (!data.candidates || data.candidates.length === 0) {
+      throw new Error("No response generated");
+    }
+    
+    return data.candidates[0].content.parts[0].text;
+  } catch (error) {
+    console.error("Error in RAG process:", error);
+    return "I'm sorry, I encountered an error processing your request. Please try again.";
+  }
 }; 
