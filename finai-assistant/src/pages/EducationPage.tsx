@@ -1,0 +1,544 @@
+import React, { useState } from 'react';
+import { Box, Container, Heading, Text, Flex, Button, Grid, GridItem, VStack, HStack, Icon, Progress, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton, useDisclosure, Tag, Radio, RadioGroup, Stack } from '@chakra-ui/react';
+import { motion } from 'framer-motion';
+import { FiAward, FiBookOpen, FiCheck, FiCheckCircle, FiClock, FiDollarSign, FiLayers, FiPercent, FiPieChart, FiTrendingUp, FiX } from 'react-icons/fi';
+import Navigation from '../components/Navigation';
+import AnimatedCard from '../components/AnimatedCard';
+
+const MotionBox = motion(Box);
+
+const EducationPage: React.FC = () => {
+  const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
+  const [quizMode, setQuizMode] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({});
+  const [quizResults, setQuizResults] = useState<{score: number, total: number} | null>(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  // Mock courses data
+  const courses = [
+    {
+      id: 'investing-101',
+      title: 'Investing 101',
+      description: 'Learn the basics of investing, including stocks, bonds, and mutual funds.',
+      icon: FiTrendingUp,
+      color: '#0EA5E9',
+      level: 'Beginner',
+      duration: '2 hours',
+      topics: [
+        'Understanding the stock market',
+        'Types of investments',
+        'Risk vs. reward',
+        'Building a portfolio'
+      ],
+      progress: 35,
+      quiz: [
+        {
+          question: 'What is a stock?',
+          options: [
+            'A loan given to a company',
+            'Partial ownership in a company',
+            'A government-backed security',
+            'A type of cryptocurrency'
+          ],
+          correctAnswer: 'Partial ownership in a company'
+        },
+        {
+          question: 'Which type of investment typically has the lowest risk?',
+          options: [
+            'Stocks',
+            'Cryptocurrency',
+            'Bonds',
+            'Commodities'
+          ],
+          correctAnswer: 'Bonds'
+        },
+        {
+          question: 'What does diversification mean?',
+          options: [
+            'Investing all your money in one promising stock',
+            'Spreading investments across various assets to reduce risk',
+            'Changing your investment strategy frequently',
+            'Investing only in foreign markets'
+          ],
+          correctAnswer: 'Spreading investments across various assets to reduce risk'
+        }
+      ]
+    },
+    {
+      id: 'personal-finance',
+      title: 'Personal Finance Essentials',
+      description: 'Master budgeting, saving, and managing debt for financial wellness.',
+      icon: FiDollarSign,
+      color: '#10B981',
+      level: 'Beginner',
+      duration: '3 hours',
+      topics: [
+        'Creating a budget',
+        'Emergency funds',
+        'Debt management',
+        'Saving strategies'
+      ],
+      progress: 70,
+      quiz: [
+        {
+          question: 'How much should an emergency fund typically cover?',
+          options: [
+            '1 week of expenses',
+            '2-4 weeks of expenses',
+            '3-6 months of expenses',
+            '2-3 years of expenses'
+          ],
+          correctAnswer: '3-6 months of expenses'
+        }
+      ]
+    },
+    {
+      id: 'retirement-planning',
+      title: 'Retirement Planning',
+      description: 'Plan for your future with strategies for long-term financial security.',
+      icon: FiPieChart,
+      color: '#8B5CF6',
+      level: 'Intermediate',
+      duration: '4 hours',
+      topics: [
+        '401(k) and IRA accounts',
+        'Retirement income calculation',
+        'Social Security benefits',
+        'Withdrawal strategies'
+      ],
+      progress: 10,
+      quiz: []
+    },
+    {
+      id: 'tax-strategies',
+      title: 'Tax-Efficient Investing',
+      description: 'Learn how to minimize tax impact and maximize returns on investments.',
+      icon: FiPercent,
+      color: '#F59E0B',
+      level: 'Advanced',
+      duration: '3 hours',
+      topics: [
+        'Tax-advantaged accounts',
+        'Capital gains strategies',
+        'Tax-loss harvesting',
+        'Estate planning basics'
+      ],
+      progress: 0,
+      quiz: []
+    }
+  ];
+
+  // User progress data
+  const userProgress = {
+    completedCourses: 2,
+    totalCourses: courses.length,
+    completedQuizzes: 3,
+    totalQuizzes: 8,
+    earnedPoints: 450,
+    nextBadgePoints: 500,
+    badges: ['Finance Novice', 'Quiz Master'],
+    streakDays: 5
+  };
+
+  const handleCourseSelect = (course: any) => {
+    setSelectedCourse(course);
+    setQuizMode(false);
+    setQuizResults(null);
+    onOpen();
+  };
+
+  const startQuiz = () => {
+    setQuizMode(true);
+    setCurrentQuestionIndex(0);
+    setSelectedAnswers({});
+    setQuizResults(null);
+  };
+
+  const handleAnswerSelect = (questionIndex: number, answer: string) => {
+    setSelectedAnswers({
+      ...selectedAnswers,
+      [questionIndex]: answer
+    });
+  };
+
+  const handleNextQuestion = () => {
+    if (currentQuestionIndex < selectedCourse.quiz.length - 1) {
+      setCurrentQuestionIndex(prevIndex => prevIndex + 1);
+    } else {
+      // Calculate results
+      calculateResults();
+    }
+  };
+
+  const calculateResults = () => {
+    let correctAnswers = 0;
+    selectedCourse.quiz.forEach((question: any, index: number) => {
+      if (selectedAnswers[index] === question.correctAnswer) {
+        correctAnswers++;
+      }
+    });
+    
+    setQuizResults({
+      score: correctAnswers,
+      total: selectedCourse.quiz.length
+    });
+  };
+
+  return (
+    <Box minH="100vh" bg="darkBlue.900">
+      <Navigation />
+      
+      <Box as="main" pt="80px">
+        <Container maxW="container.xl" px={4}>
+          {/* Header Section */}
+          <MotionBox
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            textAlign="center"
+            mb={10}
+          >
+            <Heading as="h1" size="xl" mb={4} className="text-gradient">
+              Financial Education Center
+            </Heading>
+            <Text fontSize="lg" opacity={0.8} maxW="800px" mx="auto">
+              Expand your financial knowledge with our interactive courses and quizzes.
+              Track your progress and earn badges as you master financial concepts.
+            </Text>
+          </MotionBox>
+
+          {/* User Progress Section */}
+          <AnimatedCard p={6} mb={10}>
+            <Grid templateColumns={{ base: "1fr", md: "2fr 1fr" }} gap={6}>
+              <GridItem>
+                <Heading size="md" mb={4}>Your Learning Progress</Heading>
+                <Grid templateColumns={{ base: "1fr", sm: "1fr 1fr" }} gap={4}>
+                  <VStack align="start" spacing={3}>
+                    <Text>Course Completion</Text>
+                    <HStack w="100%">
+                      <Progress 
+                        value={(userProgress.completedCourses / userProgress.totalCourses) * 100} 
+                        size="sm" 
+                        w="full" 
+                        colorScheme="blue" 
+                        borderRadius="full"
+                      />
+                      <Text fontSize="sm" whiteSpace="nowrap">
+                        {userProgress.completedCourses}/{userProgress.totalCourses}
+                      </Text>
+                    </HStack>
+                    
+                    <Text>Quizzes Passed</Text>
+                    <HStack w="100%">
+                      <Progress 
+                        value={(userProgress.completedQuizzes / userProgress.totalQuizzes) * 100} 
+                        size="sm" 
+                        w="full" 
+                        colorScheme="green" 
+                        borderRadius="full"
+                      />
+                      <Text fontSize="sm" whiteSpace="nowrap">
+                        {userProgress.completedQuizzes}/{userProgress.totalQuizzes}
+                      </Text>
+                    </HStack>
+                    
+                    <Text>Next Badge Progress</Text>
+                    <HStack w="100%">
+                      <Progress 
+                        value={(userProgress.earnedPoints / userProgress.nextBadgePoints) * 100} 
+                        size="sm" 
+                        w="full" 
+                        colorScheme="purple" 
+                        borderRadius="full"
+                      />
+                      <Text fontSize="sm" whiteSpace="nowrap">
+                        {userProgress.earnedPoints}/{userProgress.nextBadgePoints}
+                      </Text>
+                    </HStack>
+                  </VStack>
+                  
+                  <Flex direction="column" justify="center" align={{ base: "start", sm: "center" }}>
+                    <VStack spacing={2}>
+                      <HStack spacing={2}>
+                        <Icon as={FiAward} color="yellow.400" boxSize={8} />
+                        <Text fontSize="3xl" fontWeight="bold" className="text-gradient">
+                          {userProgress.earnedPoints}
+                        </Text>
+                      </HStack>
+                      <Text fontSize="sm" opacity={0.8}>Total Learning Points</Text>
+                      
+                      <HStack mt={4} spacing={2}>
+                        <Icon as={FiClock} color="blue.400" />
+                        <Text fontWeight="medium">
+                          {userProgress.streakDays} day streak!
+                        </Text>
+                      </HStack>
+                    </VStack>
+                  </Flex>
+                </Grid>
+              </GridItem>
+              
+              <GridItem bg="whiteAlpha.100" p={4} borderRadius="md">
+                <Text fontWeight="medium" mb={3}>Earned Badges</Text>
+                <Flex gap={2} flexWrap="wrap">
+                  {userProgress.badges.map((badge, index) => (
+                    <Tag key={index} size="lg" colorScheme={index === 0 ? "blue" : "purple"} p={2}>
+                      <HStack spacing={2}>
+                        <Icon as={FiAward} />
+                        <Text>{badge}</Text>
+                      </HStack>
+                    </Tag>
+                  ))}
+                </Flex>
+              </GridItem>
+            </Grid>
+          </AnimatedCard>
+
+          {/* Courses Section */}
+          <Heading size="lg" mb={6}>Learning Modules</Heading>
+          <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)", lg: "repeat(3, 1fr)" }} gap={6} mb={10}>
+            {courses.map((course, index) => (
+              <MotionBox
+                key={course.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+              >
+                <AnimatedCard 
+                  p={0} 
+                  overflow="hidden"
+                  cursor="pointer"
+                  onClick={() => handleCourseSelect(course)}
+                  hoverEffect="lift"
+                  height="100%"
+                >
+                  <Box p={5}>
+                    <HStack spacing={3} mb={4}>
+                      <Flex
+                        w="50px"
+                        h="50px"
+                        bg={`${course.color}20`}
+                        color={course.color}
+                        borderRadius="lg"
+                        justify="center"
+                        align="center"
+                      >
+                        <Icon as={course.icon} boxSize={6} />
+                      </Flex>
+                      <Box>
+                        <Heading size="md">{course.title}</Heading>
+                        <HStack mt={1}>
+                          <Tag size="sm" colorScheme="blue">{course.level}</Tag>
+                          <Flex align="center" fontSize="xs" color="gray.400">
+                            <Icon as={FiClock} mr={1} />
+                            <Text>{course.duration}</Text>
+                          </Flex>
+                        </HStack>
+                      </Box>
+                    </HStack>
+                    
+                    <Text fontSize="sm" mb={4} noOfLines={2}>
+                      {course.description}
+                    </Text>
+                    
+                    <Box>
+                      <Flex justify="space-between" mb={2}>
+                        <Text fontSize="xs" opacity={0.7}>Progress</Text>
+                        <Text fontSize="xs" fontWeight="medium">{course.progress}%</Text>
+                      </Flex>
+                      <Progress 
+                        value={course.progress} 
+                        size="sm" 
+                        colorScheme={course.progress > 0 ? "blue" : "gray"} 
+                        borderRadius="full"
+                      />
+                    </Box>
+                  </Box>
+                </AnimatedCard>
+              </MotionBox>
+            ))}
+          </Grid>
+          
+          {/* Course details modal */}
+          <Modal isOpen={isOpen} onClose={onClose} size="xl">
+            <ModalOverlay backdropFilter="blur(10px)" />
+            <ModalContent bg="darkBlue.800" color="white">
+              <ModalHeader borderBottomWidth="1px" borderColor="whiteAlpha.200">
+                {selectedCourse && (
+                  <HStack>
+                    <Icon 
+                      as={selectedCourse.icon} 
+                      color={selectedCourse.color} 
+                      boxSize={6} 
+                      mr={2}
+                    />
+                    <Text>{quizMode ? `Quiz: ${selectedCourse.title}` : selectedCourse.title}</Text>
+                  </HStack>
+                )}
+              </ModalHeader>
+              <ModalCloseButton />
+              
+              <ModalBody p={6}>
+                {selectedCourse && !quizMode && !quizResults && (
+                  <VStack align="stretch" spacing={6}>
+                    <Text>{selectedCourse.description}</Text>
+                    
+                    <Box>
+                      <Heading size="sm" mb={3}>Topics Covered</Heading>
+                      <VStack align="stretch" spacing={2}>
+                        {selectedCourse.topics.map((topic: string, index: number) => (
+                          <HStack key={index} spacing={3}>
+                            <Icon as={FiCheckCircle} color="green.400" />
+                            <Text>{topic}</Text>
+                          </HStack>
+                        ))}
+                      </VStack>
+                    </Box>
+                    
+                    {selectedCourse.quiz.length > 0 && (
+                      <Box bg="whiteAlpha.100" p={4} borderRadius="md">
+                        <Flex justify="space-between" align="center" mb={2}>
+                          <Heading size="sm">Knowledge Check</Heading>
+                          <Tag colorScheme="blue">
+                            {selectedCourse.quiz.length} Questions
+                          </Tag>
+                        </Flex>
+                        <Text fontSize="sm" mb={4}>
+                          Test your understanding of {selectedCourse.title} concepts with this quick quiz.
+                        </Text>
+                        <Button 
+                          leftIcon={<Icon as={FiBookOpen} />} 
+                          colorScheme="blue" 
+                          onClick={startQuiz}
+                        >
+                          Start Quiz
+                        </Button>
+                      </Box>
+                    )}
+                  </VStack>
+                )}
+                
+                {selectedCourse && quizMode && !quizResults && selectedCourse.quiz.length > 0 && (
+                  <VStack align="stretch" spacing={6}>
+                    <Flex justify="space-between" align="center">
+                      <Tag size="lg" colorScheme="blue">
+                        Question {currentQuestionIndex + 1} of {selectedCourse.quiz.length}
+                      </Tag>
+                      
+                      <HStack>
+                        {Array.from({ length: selectedCourse.quiz.length }).map((_, i) => (
+                          <Box
+                            key={i}
+                            w="10px"
+                            h="10px"
+                            borderRadius="full"
+                            bg={i === currentQuestionIndex ? "blue.400" : "whiteAlpha.300"}
+                          />
+                        ))}
+                      </HStack>
+                    </Flex>
+                    
+                    <Box bg="whiteAlpha.100" p={6} borderRadius="md">
+                      <Heading size="md" mb={6}>
+                        {selectedCourse.quiz[currentQuestionIndex].question}
+                      </Heading>
+                      
+                      <RadioGroup 
+                        value={selectedAnswers[currentQuestionIndex] || ''}
+                        onChange={(value) => handleAnswerSelect(currentQuestionIndex, value)}
+                      >
+                        <Stack spacing={4}>
+                          {selectedCourse.quiz[currentQuestionIndex].options.map((option: string, i: number) => (
+                            <Box 
+                              key={i} 
+                              p={3} 
+                              borderWidth="1px" 
+                              borderColor={selectedAnswers[currentQuestionIndex] === option ? "blue.400" : "whiteAlpha.200"}
+                              borderRadius="md"
+                              _hover={{ bg: "whiteAlpha.100" }}
+                            >
+                              <Radio value={option} colorScheme="blue">
+                                {option}
+                              </Radio>
+                            </Box>
+                          ))}
+                        </Stack>
+                      </RadioGroup>
+                    </Box>
+                  </VStack>
+                )}
+                
+                {quizResults && (
+                  <VStack spacing={6} align="stretch">
+                    <Box textAlign="center" py={6}>
+                      <Icon 
+                        as={quizResults.score === quizResults.total ? FiAward : FiBookOpen} 
+                        boxSize={16} 
+                        color={quizResults.score === quizResults.total ? "yellow.400" : "blue.400"} 
+                        mb={4}
+                      />
+                      <Heading size="lg" mb={2}>
+                        {quizResults.score === quizResults.total ? 'Perfect Score!' : 'Quiz Completed!'}
+                      </Heading>
+                      <Text fontSize="xl" mb={4}>
+                        You scored {quizResults.score} out of {quizResults.total}
+                      </Text>
+                      <Progress 
+                        value={(quizResults.score / quizResults.total) * 100} 
+                        size="md" 
+                        colorScheme={quizResults.score === quizResults.total ? "green" : "blue"} 
+                        borderRadius="full"
+                        mb={2}
+                      />
+                      <Text color="gray.400">
+                        {quizResults.score === quizResults.total 
+                          ? 'Congratulations! You\'ve mastered this topic!' 
+                          : 'Keep learning to improve your score!'}
+                      </Text>
+                    </Box>
+                    
+                    <HStack justify="center" spacing={4}>
+                      <Button 
+                        leftIcon={<Icon as={FiBookOpen} />} 
+                        variant="outline"
+                        onClick={() => {
+                          setQuizMode(false);
+                          setQuizResults(null);
+                        }}
+                      >
+                        Back to Course
+                      </Button>
+                      <Button 
+                        leftIcon={<Icon as={FiCheck} />} 
+                        colorScheme="blue"
+                        onClick={onClose}
+                      >
+                        Complete
+                      </Button>
+                    </HStack>
+                  </VStack>
+                )}
+              </ModalBody>
+              
+              {selectedCourse && quizMode && !quizResults && (
+                <ModalFooter borderTopWidth="1px" borderColor="whiteAlpha.200">
+                  <Button 
+                    colorScheme="blue" 
+                    onClick={handleNextQuestion}
+                    isDisabled={!selectedAnswers[currentQuestionIndex]}
+                    ml="auto"
+                  >
+                    {currentQuestionIndex < selectedCourse.quiz.length - 1 ? 'Next Question' : 'Finish Quiz'}
+                  </Button>
+                </ModalFooter>
+              )}
+            </ModalContent>
+          </Modal>
+        </Container>
+      </Box>
+    </Box>
+  );
+};
+
+export default EducationPage; 
