@@ -97,8 +97,9 @@ const Navigation: React.FC = () => {
                 to={item.path}
                 variant="ghost"
                 leftIcon={item.icon}
-                _hover={{ bg: 'rgba(255, 255, 255, 1)' }}
+                _hover={{ bg: 'rgba(150, 150, 150, 0.3)' }} // Change hover background color
                 _active={{ bg: 'rgba(114, 188, 212, 0.73)' }}
+                color="white" // Set default text color to white
               >
                 {item.name}
               </Button>
@@ -283,4 +284,4 @@ const Navigation: React.FC = () => {
   );
 };
 
-export default Navigation; 
+export default Navigation;
