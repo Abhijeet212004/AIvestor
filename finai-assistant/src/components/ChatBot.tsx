@@ -7,6 +7,8 @@ import { useSpring, animated } from 'react-spring';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config'; // Ensure this path is correct
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { addDocument } from '../services/documentService';
+import { fetchStockData, fetchStockNews, StockData } from '../services/stockService';
 
 const MotionBox = motion(Box);
 const AnimatedBox = animated(Box);
@@ -85,6 +87,32 @@ const ChatBot: React.FC = () => {
     };
     
     fetchUserPreferences();
+    
+    // Seed financial documents for testing RAG
+    const seedFinancialDocuments = async () => {
+      await addDocument(
+        "Risk tolerance is a measure of how much market volatility an investor can withstand. Conservative investors have low risk tolerance and prefer safer investments. Moderate risk investors can handle some market fluctuations for potentially higher returns. Aggressive investors have high risk tolerance and seek maximum returns despite high volatility.",
+        { type: "education", topic: "risk_profile" }
+      );
+      
+      await addDocument(
+        "For conservative investors with low risk tolerance, a suitable strategy includes 60-70% bonds, 20-30% blue-chip stocks, and 10% cash or short-term CDs. This provides stability with some growth potential.",
+        { type: "strategy", riskProfile: "conservative" }
+      );
+      
+      await addDocument(
+        "Moderate risk investors should consider a balanced portfolio of 50-60% stocks (mix of growth and value), 30-40% bonds, and 5-10% alternative investments. This provides growth potential with reasonable stability.",
+        { type: "strategy", riskProfile: "moderate" }
+      );
+      
+      await addDocument(
+        "Aggressive investors with high risk tolerance might prefer 70-80% stocks (including growth stocks and emerging markets), 10-20% bonds, and 5-10% alternative investments like REITs or commodities. This maximizes growth potential but has higher volatility.",
+        { type: "strategy", riskProfile: "aggressive" }
+      );
+    };
+
+    seedFinancialDocuments();
+    
   }, []);
 
   // Scroll to bottom when messages change
@@ -92,6 +120,69 @@ const ChatBot: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Function to determine if text is a greeting or casual conversation
+  const isGreetingOrCasual = (text: string): boolean => {
+    const greetings = ['hi', 'hello', 'hey', 'howdy', 'greetings', 'good morning', 'good afternoon', 'good evening'];
+    const casual = ['how are you', 'what\'s up', 'how\'s it going', 'nice to meet you'];
+    
+    const lowercaseText = text.toLowerCase();
+    
+    return greetings.some(greeting => lowercaseText.includes(greeting)) || 
+           casual.some(phrase => lowercaseText.includes(phrase)) ||
+           lowercaseText.split(' ').length < 3; // Very short messages are likely greetings
+  };
+
+  // Function to format the response text with proper paragraphs and spacing
+  const formatResponseText = (text: string): string => {
+    // Replace single newlines with double newlines for proper paragraphs
+    let formatted = text.replace(/\n(?!\n)/g, '\n\n');
+    
+    // Ensure proper spacing after bullet points
+    formatted = formatted.replace(/•\s*(.*?)(?=\n|$)/g, '• $1\n');
+    formatted = formatted.replace(/\*\s*(.*?)(?=\n|$)/g, '• $1\n');
+    
+    // Ensure proper spacing between sections with headers
+    formatted = formatted.replace(/([.:!?])\s*\n\s*([A-Z])/g, '$1\n\n$2');
+    
+    // Ensure double line breaks between numbered items
+    formatted = formatted.replace(/(\d+\.)\s*(.*?)(?=\n|$)/g, '$1 $2\n');
+    
+    return formatted;
+  };
+
+  // Add a function to detect stock-related queries
+  const isStockQuery = (text: string): { isStockQuery: boolean, symbol?: string } => {
+    // Check for common patterns in stock queries
+    const stockPricePattern = /(what is|tell me|show|current|price of) ([a-zA-Z\s]+) (stock|share)/i;
+    const match = text.match(stockPricePattern);
+    
+    if (match) {
+      let symbol = match[2].trim().toUpperCase();
+      // Map common company names to their stock symbols
+      const symbolMap: Record<string, string> = {
+        "ZOMATO": "ZOMATO",
+        "RELIANCE": "RELIANCE",
+        "TCS": "TCS",
+        "INFOSYS": "INFY",
+        "WIPRO": "WIPRO",
+        // Add more mappings as needed
+      };
+      
+      // Try to find the symbol in our map
+      const stockSymbol = Object.keys(symbolMap).find(key => 
+        symbol.includes(key) || key.includes(symbol)
+      );
+      
+      return { 
+        isStockQuery: true, 
+        symbol: stockSymbol ? symbolMap[stockSymbol] : symbol 
+      };
+    }
+    
+    return { isStockQuery: false };
+  };
+
+  // Modify the handleSendMessage function to check for stock queries
   const handleSendMessage = async () => {
     if (inputValue.trim() === '') return;
     
@@ -108,56 +199,179 @@ const ChatBot: React.FC = () => {
     setIsTyping(true);
     
     try {
-      // Create system prompt with user preferences
-      let systemPrompt = `You are FinAI, a sophisticated financial assistant. 
-You provide accurate, helpful and ethical financial advice.
-Always present information clearly and avoid financial jargon unless necessary.
+      // Check if this is a stock query
+      const stockQuery = isStockQuery(inputValue);
+      
+      if (stockQuery.isStockQuery && stockQuery.symbol) {
+        // Fetch real-time stock data and news
+        const stockData = await fetchStockData(stockQuery.symbol);
+        const stockNews = await fetchStockNews(stockQuery.symbol);
+        
+        // Format the response with real-time data
+        const dateStr = new Date().toLocaleDateString('en-IN', { 
+          year: 'numeric', month: 'long', day: 'numeric' 
+        });
+        
+        const timeStr = new Date().toLocaleTimeString('en-IN', {
+          hour: '2-digit', minute: '2-digit'
+        });
+        
+        let botResponse = `${stockQuery.symbol} (NSE: ${stockQuery.symbol}) - Real-time Data as of ${dateStr}, ${timeStr}\n\n`;
+        
+        botResponse += `Current Price: ₹${stockData.currentPrice.toFixed(2)}\n`;
+        botResponse += `Change: ₹${stockData.change.toFixed(2)} (${stockData.changePercent.toFixed(2)}%)\n`;
+        botResponse += `Day Range: ₹${stockData.low.toFixed(2)} - ₹${stockData.high.toFixed(2)}\n`;
+        botResponse += `Opening Price: ₹${stockData.open.toFixed(2)}\n`;
+        botResponse += `Previous Close: ₹${stockData.previousClose.toFixed(2)}\n`;
+        botResponse += `Volume: ${stockData.volume.toLocaleString()}\n\n`;
+        
+        // Add recent news
+        if (stockNews.length > 0) {
+          botResponse += `Recent News:\n\n`;
+          stockNews.forEach((news, index) => {
+            botResponse += `${index + 1}. ${news.title}\n`;
+            botResponse += `   Published: ${new Date(news.publishedAt).toLocaleDateString()}\n\n`;
+          });
+        }
+        
+        // Now use the AI to analyze this data
+        const analysisPrompt = `
+You are a financial analyst. Based on the following real-time data for ${stockQuery.symbol}, 
+provide a brief analysis and recommendation:
+
+${botResponse}
+
+Focus on key indicators, recent performance, and market trends. Give a clear buy/hold/sell recommendation 
+with target price based on technical and fundamental analysis.
 `;
 
-      // Format user preferences in a more structured way
-      let userPreferencesText = '';
-      if (userPreferences) {
-        userPreferencesText = 'User preferences:\n';
-        if (userPreferences.investmentGoals && userPreferences.investmentGoals.length > 0) {
-          userPreferencesText += `- Investment goals: ${userPreferences.investmentGoals.join(', ')}\n`;
-        }
-        if (userPreferences.riskTolerance) {
-          userPreferencesText += `- Risk tolerance: ${userPreferences.riskTolerance}\n`;
-        }
-        if (userPreferences.investmentHorizon) {
-          userPreferencesText += `- Investment horizon: ${userPreferences.investmentHorizon}\n`;
-        }
-        if (userPreferences.preferredSectors && userPreferences.preferredSectors.length > 0) {
-          userPreferencesText += `- Preferred sectors: ${userPreferences.preferredSectors.join(', ')}\n`;
-        }
-        if (userPreferences.preferredAssetClasses && userPreferences.preferredAssetClasses.length > 0) {
-          userPreferencesText += `- Preferred asset classes: ${userPreferences.preferredAssetClasses.join(', ')}\n`;
-        }
+        const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
+        const model = genAI.getGenerativeModel({ 
+          model: "gemini-pro",
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024,
+          }
+        });
+        
+        const result = await model.generateContent(analysisPrompt);
+        const aiAnalysis = result.response.text();
+        
+        // Combine real-time data with AI analysis
+        botResponse += `\nAnalysis:\n\n${aiAnalysis}`;
+        
+        // Format and send the response
+        const formattedResponse = improvedFormatResponseText(botResponse);
+        
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: formattedResponse,
+          sender: 'bot',
+          timestamp: new Date(),
+        };
+        
+        setMessages((prev) => [...prev, botMessage]);
       } else {
-        // Provide default guidance if no preferences set
-        userPreferencesText = 'User has not set specific investment preferences yet. Provide general advice and suggest setting up a profile.';
+        // Continue with regular AI processing for non-stock queries
+        // Check if the message is a greeting or casual conversation
+        const isJustGreeting = isGreetingOrCasual(inputValue);
+        
+        // Create system prompt based on message type
+        let systemPrompt = '';
+        
+        if (isJustGreeting) {
+          systemPrompt = `You are FinAI, a friendly and conversational AI financial assistant. 
+Respond to this greeting in a warm, casual way. Do not give investment advice unless explicitly asked.
+Keep your response short and engaging. You could ask if they're interested in learning about investments, 
+but don't immediately dive into financial topics.
+
+Respond in well-formatted text with proper spacing between paragraphs. Keep it concise.`;
+        } else {
+          systemPrompt = `You are FinAI, a confident financial analyst and investment advisor for Indian investors.
+When users ask about specific stocks or investment decisions, provide DIRECT and CLEAR recommendations.
+
+IMPORTANT: Users want your professional opinion. Do NOT refuse to give advice on specific investments. 
+Do NOT include disclaimers about consulting financial advisors. Do NOT say you can't give investment advice.
+Users are asking for YOUR analysis and recommendation, not general education.
+
+For stock-specific questions, provide:
+1. Current stock analysis (price trend, recent news, key metrics)
+2. Your clear buy/hold/sell recommendation with target price
+3. Reasoning behind your recommendation
+4. Alternative investments if relevant
+
+When formatting your response:
+1. Use clear, simple language with direct statements
+2. Use proper paragraphs with double line breaks between them
+3. Use clean bullet points with • (not asterisks)
+4. Create clear section headers
+5. Ensure adequate spacing between sections
+6. Make your buy/sell/hold recommendation extremely clear
+7. Give exact price targets and timelines when possible
+8. For Indian stocks, include NSE/BSE ticker symbols
+9. Use language like "I recommend" instead of "you might consider"
+10. Be decisive - users want clarity, not hedging
+
+For Indian market questions, provide specific stock names, mutual funds, or ETFs available in India.
+Your job is to give specific, actionable investment advice based on your analysis of the market and the user's situation.`;
+        }
+
+        // Format user preferences in a more structured way
+        let userPreferencesText = '';
+        if (userPreferences && !isJustGreeting) {
+          userPreferencesText = 'User preferences:\n';
+          if (userPreferences.investmentGoals && userPreferences.investmentGoals.length > 0) {
+            userPreferencesText += `- Investment goals: ${userPreferences.investmentGoals.join(', ')}\n`;
+          }
+          if (userPreferences.riskTolerance) {
+            userPreferencesText += `- Risk tolerance: ${userPreferences.riskTolerance}\n`;
+          }
+          if (userPreferences.investmentHorizon) {
+            userPreferencesText += `- Investment horizon: ${userPreferences.investmentHorizon}\n`;
+          }
+          if (userPreferences.preferredSectors && userPreferences.preferredSectors.length > 0) {
+            userPreferencesText += `- Preferred sectors: ${userPreferences.preferredSectors.join(', ')}\n`;
+          }
+          if (userPreferences.preferredAssetClasses && userPreferences.preferredAssetClasses.length > 0) {
+            userPreferencesText += `- Preferred asset classes: ${userPreferences.preferredAssetClasses.join(', ')}\n`;
+          }
+        } else if (!isJustGreeting) {
+          // Provide default guidance if no preferences set
+          userPreferencesText = 'User has not set specific investment preferences yet. Provide general advice and suggest setting up a profile.';
+        }
+
+        console.log("Sending request to Gemini API with prompt:", `${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
+        
+        const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
+        const model = genAI.getGenerativeModel({ 
+          model: "gemini-2.0-pro-exp-02-05",
+          generationConfig: {
+            temperature: 0.9,
+            topP: 0.95,
+            topK: 40,
+            maxOutputTokens: 2048,
+          }
+        });
+
+        const result = await model.generateContent(`${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
+        let botResponse = result.response.text();
+
+        // Enhanced formatting function to properly handle the response
+        botResponse = improvedFormatResponseText(botResponse);
+
+        // Add bot response
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: botResponse,
+          sender: 'bot',
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => [...prev, botMessage]);
       }
-
-      console.log("Sending request to Gemini API with prompt:", `${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
-      
-      const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-      const result = await model.generateContent(`${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
-      const botResponse = result.response.text();
-      
-      // Add bot response
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: botResponse,
-        sender: 'bot',
-        timestamp: new Date(),
-      };
-      
-      setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
       console.error("Error getting AI response:", error);
-      
+
       // Add a more descriptive error message
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -165,11 +379,39 @@ Always present information clearly and avoid financial jargon unless necessary.
         sender: 'bot',
         timestamp: new Date(),
       };
-      
+
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
     }
+  };
+
+  // Improved formatting function to handle markdown and ensure better display
+  const improvedFormatResponseText = (text: string): string => {
+    // Replace all markdown asterisks with clean formatting
+    let formatted = text;
+
+    // Remove asterisk-based formatting and replace with clean formatting
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '$1'); // Remove bold markers
+    formatted = formatted.replace(/\*(.*?)\*/g, '$1');     // Remove italics markers
+
+    // Ensure proper spacing after bullet points
+    formatted = formatted.replace(/•\s*(.*?)(?=\n|$)/g, '• $1\n');
+
+    // Ensure double newlines between sections
+    formatted = formatted.replace(/([.:!?])\s*\n([A-Z])/g, '$1\n\n$2');
+
+    // Ensure paragraphs have proper spacing
+    formatted = formatted.replace(/\n{3,}/g, '\n\n'); // Replace excessive newlines with double newlines
+    formatted = formatted.replace(/\n(?!\n)/g, '\n\n'); // Replace single newlines with double newlines
+
+    // Ensure proper spacing between numbered list items
+    formatted = formatted.replace(/(\d+\.)\s*(.*?)(?=\n|$)/g, '$1 $2\n');
+
+    // Ensure proper spacing after section headers (typically ending with colon)
+    formatted = formatted.replace(/(.*?):\s*\n/g, '$1:\n\n');
+
+    return formatted;
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -302,7 +544,12 @@ Always present information clearly and avoid financial jargon unless necessary.
                   p={3}
                   borderRadius={message.sender === 'user' ? '12px 12px 0 12px' : '12px 12px 12px 0'}
                 >
-                  <Text fontSize="sm">{message.text}</Text>
+                  <Text 
+                    fontSize="sm"
+                    whiteSpace="pre-wrap" // This ensures line breaks are preserved
+                  >
+                    {message.text}
+                  </Text>
                 </Box>
                 <Text fontSize="xs" color="gray.400" mt={1} textAlign={message.sender === 'user' ? 'right' : 'left'}>
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -403,4 +650,4 @@ Always present information clearly and avoid financial jargon unless necessary.
   );
 };
 
-export default ChatBot; 
+export default ChatBot;
