@@ -6,9 +6,15 @@ import { useSpring, animated } from 'react-spring';
 // Firebase imports
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config'; // Ensure this path is correct
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { addDocument } from '../services/documentService';
-import { fetchStockData, fetchStockNews, StockData } from '../services/stockService';
+import { 
+  fetchFinancialNews, 
+  fetchBusinessHeadlines, 
+  fetchCompanyNews, 
+  formatNewsAsString,
+  NewsArticle 
+} from '../services/newsService';
 
 const MotionBox = motion(Box);
 const AnimatedBox = animated(Box);
@@ -150,39 +156,175 @@ const ChatBot: React.FC = () => {
     return formatted;
   };
 
-  // Add a function to detect stock-related queries
-  const isStockQuery = (text: string): { isStockQuery: boolean, symbol?: string } => {
-    // Check for common patterns in stock queries
-    const stockPricePattern = /(what is|tell me|show|current|price of) ([a-zA-Z\s]+) (stock|share)/i;
-    const match = text.match(stockPricePattern);
+  // Function to get relevant news based on user query
+  const getRelevantNews = async (query: string): Promise<string> => {
+    // Check if query contains specific company names or stock symbols
+    const companyRegex = /\b(?:HDFC|SBI|TCS|Reliance|Infosys|ICICI|Wipro|Tata|Adani|Bajaj|Maruti|Suzuki|Bharti|Airtel|Sun|Pharma|ITC|HUL|ONGC|Axis|Bank|Kotak|L&T)\b/i;
+    const stockRegex = /\b[A-Z]{2,5}\b/; // Simple regex for stock symbols
+
+    // Explicitly define the type for newsArticles
+    let newsArticles: NewsArticle[] = [];
     
-    if (match) {
-      let symbol = match[2].trim().toUpperCase();
-      // Map common company names to their stock symbols
-      const symbolMap: Record<string, string> = {
-        "ZOMATO": "ZOMATO",
-        "RELIANCE": "RELIANCE",
-        "TCS": "TCS",
-        "INFOSYS": "INFY",
-        "WIPRO": "WIPRO",
-        // Add more mappings as needed
+    if (companyRegex.test(query)) {
+      // Extract company name
+      const match = query.match(companyRegex);
+      if (match && match[0]) {
+        newsArticles = await fetchCompanyNews(match[0]);
+      }
+    } else if (stockRegex.test(query)) {
+      // Extract potential stock symbol
+      const match = query.match(stockRegex);
+      if (match && match[0]) {
+        newsArticles = await fetchCompanyNews(match[0]);
+      }
+    } else {
+      // For general financial queries
+      const keywordMap: Record<string, string> = {
+        'investment': 'investment strategy market',
+        'stock': 'stock market trends',
+        'mutual fund': 'mutual funds investment',
+        'market': 'market analysis trends',
+        'crypto': 'cryptocurrency bitcoin ethereum',
+        'gold': 'gold price investment',
+        'real estate': 'real estate property market'
       };
       
-      // Try to find the symbol in our map
-      const stockSymbol = Object.keys(symbolMap).find(key => 
-        symbol.includes(key) || key.includes(symbol)
-      );
+      // Find relevant keywords in the query
+      let searchQuery = 'finance market';
+      for (const [keyword, searchTerm] of Object.entries(keywordMap)) {
+        if (query.toLowerCase().includes(keyword)) {
+          searchQuery = searchTerm;
+          break;
+        }
+      }
       
-      return { 
-        isStockQuery: true, 
-        symbol: stockSymbol ? symbolMap[stockSymbol] : symbol 
-      };
+      newsArticles = await fetchFinancialNews(searchQuery, 5);
     }
     
-    return { isStockQuery: false };
+    return formatNewsAsString(newsArticles);
   };
 
-  // Modify the handleSendMessage function to check for stock queries
+  const callVertexAI = async (userMessage: string, newsData: string = '', systemPromptText: string = ''): Promise<string> => {
+    try {
+      // Format user preferences
+      const preferencesObj = {
+        investmentGoals: userPreferences?.investmentGoals || [],
+        riskTolerance: userPreferences?.riskTolerance || 'Moderate',
+        investmentHorizon: userPreferences?.investmentHorizon || 'Medium-term',
+        preferredSectors: userPreferences?.preferredSectors || [],
+        preferredAssetClasses: userPreferences?.preferredAssetClasses || []
+      };
+
+      console.log("Calling Flask API...");
+      const payload = {
+        message: userMessage,
+        preferences: preferencesObj,
+        systemPrompt: systemPromptText,
+        newsData: newsData
+      };
+      console.log("API payload:", JSON.stringify(payload).substring(0, 200) + "...");
+
+      const response = await fetch('http://localhost:5000/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API error response:", errorText);
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.response;
+    } catch (error) {
+      console.error('Error calling Vertex AI:', error);
+      throw error; // Re-throw to trigger fallback
+    }
+  };
+
+  const getAdvancedModelResponse = async (userMessage: string): Promise<string> => {
+    try {
+      const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
+      
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-pro",
+        generationConfig: {
+          temperature: 0.4,
+          topP: 0.95,
+          maxOutputTokens: 8192,
+        },
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_NONE
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_NONE
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE
+          }
+        ]
+      });
+
+      // System instruction
+      const financialSystemInstruction = `Analyze the current financial market trends and provide a clear, data-driven investment recommendation based on the user's risk appetite, portfolio, and preferences. Use real-time stock data, emerging business insights, and market trends to make firm, actionable suggestions. Consider historical performance, recent economic events, and sector momentum. Avoid vague statements—deliver precise, fact-based guidance. If an investment is risky, state it directly with supporting data, but phrase it in a constructive and non-aggressive manner to maintain a positive user experience. If a trend is strong, highlight the exact reasons and data points backing it. Provide alternative options only if necessary. Also, suggest high-potential emerging industries and businesses based on recent developments. If the user is holding a stock at a loss, acknowledge the situation with empathy and offer rational, unbiased recommendations without unnecessary negativity. At the end, offer additional insights related to the user's past preferences, such as mutual funds, stocks, or risk management strategies. Keep the tone clear, polite, and helpful, ensuring an unbiased and user-friendly experience.`;
+
+      // Format user preferences
+      const preferencesText = `User Preferences:
+- Investment Goals: ${userPreferences?.investmentGoals?.join(', ') || 'Not specified'}
+- Risk Tolerance: ${userPreferences?.riskTolerance || 'Moderate'}
+- Investment Horizon: ${userPreferences?.investmentHorizon || 'Medium-term'}
+- Preferred Sectors: ${userPreferences?.preferredSectors?.join(', ') || 'Not specified'}
+- Preferred Asset Classes: ${userPreferences?.preferredAssetClasses?.join(', ') || 'Not specified'}`;
+
+      // Fix the format: Use a single string prompt instead of an array with roles
+      const combinedPrompt = `${financialSystemInstruction}
+
+I'll analyze financial markets and provide clear, data-driven investment recommendations.
+
+${preferencesText}
+
+User Query: ${userMessage}`;
+
+      const result = await model.generateContent(combinedPrompt);
+      return result.response.text();
+    } catch (error) {
+      console.error('Error with advanced model:', error);
+      throw error;
+    }
+  };
+
+  const testSimpleAPI = async (userMessage: string): Promise<string> => {
+    try {
+      const response = await fetch('http://localhost:5000/api/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.response;
+    } catch (error) {
+      console.error('Error calling test API:', error);
+      throw error;
+    }
+  };
+
   const handleSendMessage = async () => {
     if (inputValue.trim() === '') return;
     
@@ -199,176 +341,144 @@ const ChatBot: React.FC = () => {
     setIsTyping(true);
     
     try {
-      // Check if this is a stock query
-      const stockQuery = isStockQuery(inputValue);
+      let botResponse: string;
+
+      // Check if the message is a greeting or casual conversation
+      const isJustGreeting = isGreetingOrCasual(inputValue);
       
-      if (stockQuery.isStockQuery && stockQuery.symbol) {
-        // Fetch real-time stock data and news
-        const stockData = await fetchStockData(stockQuery.symbol);
-        const stockNews = await fetchStockNews(stockQuery.symbol);
-        
-        // Format the response with real-time data
-        const dateStr = new Date().toLocaleDateString('en-IN', { 
-          year: 'numeric', month: 'long', day: 'numeric' 
-        });
-        
-        const timeStr = new Date().toLocaleTimeString('en-IN', {
-          hour: '2-digit', minute: '2-digit'
-        });
-        
-        let botResponse = `${stockQuery.symbol} (NSE: ${stockQuery.symbol}) - Real-time Data as of ${dateStr}, ${timeStr}\n\n`;
-        
-        botResponse += `Current Price: ₹${stockData.currentPrice.toFixed(2)}\n`;
-        botResponse += `Change: ₹${stockData.change.toFixed(2)} (${stockData.changePercent.toFixed(2)}%)\n`;
-        botResponse += `Day Range: ₹${stockData.low.toFixed(2)} - ₹${stockData.high.toFixed(2)}\n`;
-        botResponse += `Opening Price: ₹${stockData.open.toFixed(2)}\n`;
-        botResponse += `Previous Close: ₹${stockData.previousClose.toFixed(2)}\n`;
-        botResponse += `Volume: ${stockData.volume.toLocaleString()}\n\n`;
-        
-        // Add recent news
-        if (stockNews.length > 0) {
-          botResponse += `Recent News:\n\n`;
-          stockNews.forEach((news, index) => {
-            botResponse += `${index + 1}. ${news.title}\n`;
-            botResponse += `   Published: ${new Date(news.publishedAt).toLocaleDateString()}\n\n`;
-          });
-        }
-        
-        // Now use the AI to analyze this data
-        const analysisPrompt = `
-You are a financial analyst. Based on the following real-time data for ${stockQuery.symbol}, 
-provide a brief analysis and recommendation:
-
-${botResponse}
-
-Focus on key indicators, recent performance, and market trends. Give a clear buy/hold/sell recommendation 
-with target price based on technical and fundamental analysis.
-`;
-
-        const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
-        const model = genAI.getGenerativeModel({ 
-          model: "gemini-pro",
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 1024,
-          }
-        });
-        
-        const result = await model.generateContent(analysisPrompt);
-        const aiAnalysis = result.response.text();
-        
-        // Combine real-time data with AI analysis
-        botResponse += `\nAnalysis:\n\n${aiAnalysis}`;
-        
-        // Format and send the response
-        const formattedResponse = improvedFormatResponseText(botResponse);
-        
-        const botMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: formattedResponse,
-          sender: 'bot',
-          timestamp: new Date(),
-        };
-        
-        setMessages((prev) => [...prev, botMessage]);
-      } else {
-        // Continue with regular AI processing for non-stock queries
-        // Check if the message is a greeting or casual conversation
-        const isJustGreeting = isGreetingOrCasual(inputValue);
-        
-        // Create system prompt based on message type
-        let systemPrompt = '';
-        
-        if (isJustGreeting) {
-          systemPrompt = `You are FinAI, a friendly and conversational AI financial assistant. 
+      // Create system prompt based on message type
+      let systemPrompt = '';
+      
+      if (isJustGreeting) {
+        systemPrompt = `You are FinAI, a friendly and conversational AI financial assistant. 
 Respond to this greeting in a warm, casual way. Do not give investment advice unless explicitly asked.
 Keep your response short and engaging. You could ask if they're interested in learning about investments, 
 but don't immediately dive into financial topics.
 
 Respond in well-formatted text with proper spacing between paragraphs. Keep it concise.`;
-        } else {
-          systemPrompt = `You are FinAI, a confident financial analyst and investment advisor for Indian investors.
+      } else {
+        systemPrompt = `You are FinAI, a decisive financial analyst and investment advisor for Indian investors.
 When users ask about specific stocks or investment decisions, provide DIRECT and CLEAR recommendations.
 
-IMPORTANT: Users want your professional opinion. Do NOT refuse to give advice on specific investments. 
-Do NOT include disclaimers about consulting financial advisors. Do NOT say you can't give investment advice.
-Users are asking for YOUR analysis and recommendation, not general education.
+IMPORTANT: 
+1. DO NOT include placeholder text like [insert X]. Use only what you know.
+2. DO NOT say "this is not financial advice" or add disclaimers.
+3. DO NOT tell users to consult financial advisors.
+4. NEVER mention that you lack real-time data - work with what you're given.
 
-For stock-specific questions, provide:
-1. Current stock analysis (price trend, recent news, key metrics)
-2. Your clear buy/hold/sell recommendation with target price
-3. Reasoning behind your recommendation
-4. Alternative investments if relevant
+For stock-specific questions:
+1. Always start with actual data provided in the context (price, news, etc.)
+2. Give a clear buy/hold/sell recommendation with a target price
+3. Be confident and direct in your assessment
+4. Provide specific ETF recommendations with actual ticker symbols
 
-When formatting your response:
-1. Use clear, simple language with direct statements
-2. Use proper paragraphs with double line breaks between them
-3. Use clean bullet points with • (not asterisks)
-4. Create clear section headers
-5. Ensure adequate spacing between sections
-6. Make your buy/sell/hold recommendation extremely clear
-7. Give exact price targets and timelines when possible
-8. For Indian stocks, include NSE/BSE ticker symbols
-9. Use language like "I recommend" instead of "you might consider"
-10. Be decisive - users want clarity, not hedging
+For formatting:
+1. Use direct statements like "I recommend buying X" not "you might consider X"
+2. Use proper spacing between paragraphs
+3. Make your recommendation stand out clearly
+4. For Indian stocks, include NSE/BSE ticker symbols
 
-For Indian market questions, provide specific stock names, mutual funds, or ETFs available in India.
-Your job is to give specific, actionable investment advice based on your analysis of the market and the user's situation.`;
+For Indian market questions, provide specific names of actual mutual funds and ETFs available in India.`;
+      }
+
+      // Format user preferences in a more structured way
+      let userPreferencesText = '';
+      if (userPreferences && !isJustGreeting) {
+        userPreferencesText = 'User preferences:\n';
+        if (userPreferences.investmentGoals && userPreferences.investmentGoals.length > 0) {
+          userPreferencesText += `- Investment goals: ${userPreferences.investmentGoals.join(', ')}\n`;
         }
-
-        // Format user preferences in a more structured way
-        let userPreferencesText = '';
-        if (userPreferences && !isJustGreeting) {
-          userPreferencesText = 'User preferences:\n';
-          if (userPreferences.investmentGoals && userPreferences.investmentGoals.length > 0) {
-            userPreferencesText += `- Investment goals: ${userPreferences.investmentGoals.join(', ')}\n`;
-          }
-          if (userPreferences.riskTolerance) {
-            userPreferencesText += `- Risk tolerance: ${userPreferences.riskTolerance}\n`;
-          }
-          if (userPreferences.investmentHorizon) {
-            userPreferencesText += `- Investment horizon: ${userPreferences.investmentHorizon}\n`;
-          }
-          if (userPreferences.preferredSectors && userPreferences.preferredSectors.length > 0) {
-            userPreferencesText += `- Preferred sectors: ${userPreferences.preferredSectors.join(', ')}\n`;
-          }
-          if (userPreferences.preferredAssetClasses && userPreferences.preferredAssetClasses.length > 0) {
-            userPreferencesText += `- Preferred asset classes: ${userPreferences.preferredAssetClasses.join(', ')}\n`;
-          }
-        } else if (!isJustGreeting) {
-          // Provide default guidance if no preferences set
-          userPreferencesText = 'User has not set specific investment preferences yet. Provide general advice and suggest setting up a profile.';
+        if (userPreferences.riskTolerance) {
+          userPreferencesText += `- Risk tolerance: ${userPreferences.riskTolerance}\n`;
         }
+        if (userPreferences.investmentHorizon) {
+          userPreferencesText += `- Investment horizon: ${userPreferences.investmentHorizon}\n`;
+        }
+        if (userPreferences.preferredSectors && userPreferences.preferredSectors.length > 0) {
+          userPreferencesText += `- Preferred sectors: ${userPreferences.preferredSectors.join(', ')}\n`;
+        }
+        if (userPreferences.preferredAssetClasses && userPreferences.preferredAssetClasses.length > 0) {
+          userPreferencesText += `- Preferred asset classes: ${userPreferences.preferredAssetClasses.join(', ')}\n`;
+        }
+      } else if (!isJustGreeting) {
+        // Provide default guidance if no preferences set
+        userPreferencesText = 'User has not set specific investment preferences yet. Provide general advice and suggest setting up a profile.';
+      }
 
-        console.log("Sending request to Gemini API with prompt:", `${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
-        
+      // Get relevant news data
+      let relevantNewsText = '';
+      if (!isJustGreeting) {
+        try {
+          console.log("Fetching relevant news for query:", inputValue);
+          relevantNewsText = await getRelevantNews(inputValue);
+          console.log("Got news data:", relevantNewsText.substring(0, 100) + "...");
+        } catch (error) {
+          console.error("Error fetching news:", error);
+          relevantNewsText = "Unable to fetch latest news at this time.";
+        }
+      }
+
+      // Update systemPrompt to include news data
+      systemPrompt += `\n\nLatest relevant news for context:
+${relevantNewsText}
+
+Consider this news data when providing your financial analysis and recommendations. Use the most relevant pieces to support your advice.`;
+
+      console.log("Sending request to Vertex API with prompt:", `${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
+      
+      // For non-greetings, use the advanced Flask API first, then fall back to the direct Gemini model
+      if (!isJustGreeting) {
+        try {
+          // Use the main Vertex AI endpoint instead of the test endpoint
+          botResponse = await callVertexAI(inputValue, relevantNewsText, systemPrompt);
+          botResponse = improvedFormatResponseText(botResponse);
+        } catch (error) {
+          console.error("Error with Flask API:", error);
+          
+          try {
+            // Then try the JavaScript implementation (with renamed function)
+            botResponse = await getAdvancedModelResponse(inputValue);
+            botResponse = improvedFormatResponseText(botResponse);
+          } catch (error) {
+            console.error("Error with advanced model:", error);
+            
+            // Finally fall back to the basic Gemini model
+            console.log("Falling back to basic Gemini API");
+            const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
+            const model = genAI.getGenerativeModel({ 
+              model: "gemini-1.5-pro",
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 1024,
+              }
+            });
+            const result = await model.generateContent(`${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
+            botResponse = result.response.text();
+          }
+        }
+      } else {
+        // For greetings, continue using the simple model directly
         const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
         const model = genAI.getGenerativeModel({ 
-          model: "gemini-2.0-pro-exp-02-05",
+          model: "gemini-1.5-pro",
           generationConfig: {
-            temperature: 0.9,
-            topP: 0.95,
-            topK: 40,
-            maxOutputTokens: 2048,
+            temperature: 0.7,
+            maxOutputTokens: 1024,
           }
         });
-
         const result = await model.generateContent(`${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
-        let botResponse = result.response.text();
-
-        // Enhanced formatting function to properly handle the response
-        botResponse = improvedFormatResponseText(botResponse);
-
-        // Add bot response
-        const botMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: botResponse,
-          sender: 'bot',
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, botMessage]);
+        botResponse = result.response.text();
       }
+
+      // Add bot response
+      const botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: botResponse,
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
       console.error("Error getting AI response:", error);
 

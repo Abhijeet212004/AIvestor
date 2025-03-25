@@ -1,10 +1,11 @@
 import { searchDocuments, formatDocumentsAsString } from "./documentService";
+import { fetchFinancialNews, formatNewsAsString } from "./newsService";
 
 // Gemini API Key
 const GEMINI_API_KEY = "AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g";
 
 // System prompt template for the RAG implementation
-const createSystemPrompt = (context: string, preferences: string, question: string): string => {
+const createSystemPrompt = (context: string, preferences: string, newsData: string, question: string): string => {
   return `You are FinAI, a sophisticated financial assistant powered by the latest AI technology.
 Your goal is to provide accurate, helpful and ethical financial advice.
 
@@ -16,8 +17,10 @@ Context: ${context}
 
 User preferences: ${preferences}
 
+Latest financial news: ${newsData}
+
 When answering, provide thoughtful analysis and clear explanations. 
-Reference specific information from the context when applicable.
+Reference specific information from the context and news when applicable.
 Always present information clearly and avoid financial jargon unless necessary.
 
 User's question: ${question}`;
@@ -35,10 +38,14 @@ export const processQuery = async (
     // 2. Format documents as context string
     const context = formatDocumentsAsString(docs);
     
-    // 3. Create the prompt with context
-    const prompt = createSystemPrompt(context, userPreferences, query);
+    // 3. Fetch relevant news
+    const newsArticles = await fetchFinancialNews(query, 3);
+    const newsData = formatNewsAsString(newsArticles);
     
-    // 4. Call Gemini API directly
+    // 4. Create the prompt with context and news
+    const prompt = createSystemPrompt(context, userPreferences, newsData, query);
+    
+    // 5. Call Gemini API directly
     const response = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + GEMINI_API_KEY,
       {
