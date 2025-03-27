@@ -7,6 +7,7 @@ import Navigation from '../components/Navigation';
 import ChatBot from '../components/ChatBot';
 import StockChart from '../components/StockChart';
 import AnimatedCard from '../components/AnimatedCard';
+import ProtectedFeature from '../components/ProtectedFeature';
 
 const MotionBox = motion(Box);
 const MotionHeading = motion(Heading);
@@ -355,7 +356,45 @@ const HomePage: React.FC = () => {
       </Box>
       
       {/* Chatbot component */}
-      <ChatBot />
+      <ProtectedFeature 
+        featureName="AI Chat Assistant"
+        fallback={
+          <MotionBox
+            position="fixed"
+            bottom="30px"
+            right="30px"
+            zIndex="900"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="glass-card"
+            p={3}
+            borderRadius="xl"
+            textAlign="center"
+            maxW="300px"
+            boxShadow="0 4px 12px rgba(0,0,0,0.15)"
+            _hover={{ transform: "translateY(-5px)", transition: "all 0.3s ease" }}
+          >
+            <Flex align="center" mb={2}>
+              <Icon as={FiMessageCircle} boxSize={6} color="blue.400" mr={2} />
+              <Heading size="xs">AIvestor</Heading>
+            </Flex>
+            <Text fontSize="xs" mb={2} opacity={0.8}>Sign in to chat with our AI assistant.</Text>
+            <Button 
+              as={RouterLink} 
+              to="/auth" 
+              size="xs" 
+              colorScheme="blue" 
+              variant="outline"
+              width="full"
+            >
+              Sign In
+            </Button>
+          </MotionBox>
+        }
+      >
+        <ChatBot />
+      </ProtectedFeature>
     </Box>
   );
 };

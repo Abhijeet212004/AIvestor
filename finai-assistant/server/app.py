@@ -6,9 +6,18 @@ import os
 import requests
 import json
 import yfinance as yf
+import sys
+import os
+
+# Add parent directory to Python path to find the api module
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from api.stock_data import register_stock_routes  # Now Python can find this module
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+# Register stock data routes
+register_stock_routes(app)
 
 # Add RapidAPI credentials as constants at the top of the file
 RAPIDAPI_KEY = "3eb4e1fb3bmsh51fce18992aaa0ep180473jsn735202c42635"
