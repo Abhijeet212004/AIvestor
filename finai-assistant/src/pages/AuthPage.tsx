@@ -244,7 +244,7 @@ const AuthPage: React.FC = () => {
             boxShadow="xl"
           >
             <Heading as="h1" size="xl" mb={6} textAlign="center">
-              Welcome to FinAI
+              Welcome to AIvestor
             </Heading>
             
             <Tabs isFitted variant="enclosed" colorScheme="blue">

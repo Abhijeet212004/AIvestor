@@ -180,7 +180,7 @@ const CommunityPage: React.FC = () => {
       title: 'Investment Challenge Kickoff',
       date: 'July 1, 2023',
       time: '10:00 AM IST',
-      speaker: 'FinAI Team',
+      speaker: 'AIvestor Team',
       attendees: 318,
       category: 'Challenge'
     }

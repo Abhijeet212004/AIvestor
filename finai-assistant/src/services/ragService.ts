@@ -6,7 +6,7 @@ const GEMINI_API_KEY = "AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g";
 
 // System prompt template for the RAG implementation
 const createSystemPrompt = (context: string, preferences: string, newsData: string, question: string): string => {
-  return `You are FinAI, a sophisticated financial assistant powered by the latest AI technology.
+  return `You are AIvestor, a sophisticated financial assistant powered by the latest AI technology.
 Your goal is to provide accurate, helpful and ethical financial advice.
 
 Use the following pieces of retrieved context to answer the user's question. 

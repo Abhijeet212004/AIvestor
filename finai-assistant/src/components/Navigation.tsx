@@ -77,7 +77,7 @@ const Navigation: React.FC = () => {
               whileHover={{ scale: 1.05 }}
             >
               <Text fontSize="2xl" fontWeight="bold" className="text-gradient">
-                FinAI
+                AIvestor
               </Text>
             </MotionBox>
           </Flex>
@@ -97,9 +97,9 @@ const Navigation: React.FC = () => {
                 to={item.path}
                 variant="ghost"
                 leftIcon={item.icon}
-                _hover={{ bg: 'rgba(150, 150, 150, 0.3)' }} // Change hover background color
+                _hover={{ bg: 'rgba(150, 150, 150, 0.3)' }}
                 _active={{ bg: 'rgba(114, 188, 212, 0.73)' }}
-                color="white" // Set default text color to white
+                color="white"
               >
                 {item.name}
               </Button>
@@ -126,23 +126,41 @@ const Navigation: React.FC = () => {
                   )}
                 </Avatar>
               </MenuButton>
-              <MenuList bg="darkBlue.800" borderColor="darkBlue.700">
+              <MenuList 
+                bg="#1A202C" 
+                borderColor="rgba(255, 255, 255, 0.1)"
+                boxShadow="0px 5px 15px rgba(0, 0, 0, 0.5)"
+                borderRadius="md"
+                p={2}
+              >
                 <MenuItem
                   icon={<FiUser />}
                   onClick={() => navigate('/profile')}
+                  _hover={{ bg: 'whiteAlpha.100' }}
+                  color="white"
+                  bg="#1A202C"
+                  borderRadius="md"
                 >
                   Edit Profile
                 </MenuItem>
                 <MenuItem
                   icon={<FiSettings />}
                   onClick={() => navigate('/settings')}
+                  _hover={{ bg: 'whiteAlpha.100' }}
+                  color="white"
+                  bg="#1A202C"
+                  borderRadius="md"
                 >
                   Settings
                 </MenuItem>
-                <MenuDivider />
+                <MenuDivider borderColor="whiteAlpha.200" />
                 <MenuItem
                   icon={<FiLogOut />}
                   onClick={handleLogout}
+                  _hover={{ bg: 'red.800' }}
+                  color="white"
+                  bg="#1A202C"
+                  borderRadius="md"
                 >
                   Logout
                 </MenuItem>
@@ -196,7 +214,7 @@ const Navigation: React.FC = () => {
 
         <Drawer isOpen={isOpen} placement="right" onClose={onClose}>
           <DrawerOverlay backdropFilter="blur(10px)" />
-          <DrawerContent bg="darkBlue.800">
+          <DrawerContent bg="#1A202C">
             <DrawerCloseButton />
             <DrawerHeader borderBottomWidth="1px">Menu</DrawerHeader>
             <DrawerBody>

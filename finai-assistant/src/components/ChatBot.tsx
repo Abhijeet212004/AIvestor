@@ -350,14 +350,14 @@ User Query: ${userMessage}`;
       let systemPrompt = '';
       
       if (isJustGreeting) {
-        systemPrompt = `You are FinAI, a friendly and conversational AI financial assistant. 
+        systemPrompt = `You are AIvestor, a friendly and conversational AI financial assistant. 
 Respond to this greeting in a warm, casual way. Do not give investment advice unless explicitly asked.
 Keep your response short and engaging. You could ask if they're interested in learning about investments, 
 but don't immediately dive into financial topics.
 
 Respond in well-formatted text with proper spacing between paragraphs. Keep it concise.`;
       } else {
-        systemPrompt = `You are FinAI, a decisive financial analyst and investment advisor for Indian investors.
+        systemPrompt = `You are AIvestor, a decisive financial analyst and investment advisor for Indian investors.
 When users ask about specific stocks or investment decisions, provide DIRECT and CLEAR recommendations.
 
 IMPORTANT: 
@@ -558,7 +558,7 @@ Consider this news data when providing your financial analysis and recommendatio
       >
         <IconButton
           aria-label="Open chat"
-          icon={<Avatar src="/finai-logo.png" name="FinAI Assistant" />}
+          icon={<Avatar src="/finai-logo.png" name="AIvestor Assistant" />}
           onClick={onOpen}
           size="lg"
           rounded="full"
@@ -599,8 +599,8 @@ Consider this news data when providing your financial analysis and recommendatio
             bg="rgba(14, 165, 233, 0.1)"
           >
             <HStack>
-              <Avatar size="sm" name="FinAI Assistant" bg="brand.500" />
-              <Text fontWeight="bold">FinAI Assistant</Text>
+              <Avatar size="sm" name="AIvestor Assistant" bg="brand.500" />
+              <Text fontWeight="bold">AIvestor Assistant</Text>
             </HStack>
             <HStack>
               <IconButton
@@ -676,7 +676,7 @@ Consider this news data when providing your financial analysis and recommendatio
                 <Box bg="rgba(255, 255, 255, 0.1)" p={3} borderRadius="12px 12px 12px 0">
                   <Flex align="center">
                     <Spinner size="xs" mr={2} />
-                    <Text fontSize="sm">FinAI is thinking...</Text>
+                    <Text fontSize="sm">AIvestor is thinking...</Text>
                   </Flex>
                 </Box>
               </MotionBox>

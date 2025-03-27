@@ -118,4 +118,20 @@ code {
 
 .button-3d:active {
   transform: translateY(4px);
+}
+
+/* Fix for Chakra UI menu items */
+.chakra-menu__menuitem {
+  background-color: #1A202C !important;
+  color: white !important;
+}
+
+.chakra-menu__menuitem:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.chakra-menu__menulist {
+  background-color: #1A202C !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.5) !important;
 } 

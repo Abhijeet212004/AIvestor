@@ -254,7 +254,7 @@ User preferences:
         
         # Use the system prompt from the frontend if provided, otherwise use default
         if not system_prompt:
-            si_text = """You are FinAI, a decisive financial analyst and investment advisor for Indian investors. 
+            si_text = """You are AIvestor, a decisive financial analyst and investment advisor for Indian investors. 
             
 VERY IMPORTANT INSTRUCTIONS:
 1. NEVER use placeholder text like [insert X]. If you don't have specific data, BE DIRECT about what you do know.
