@@ -235,7 +235,11 @@ const HomePage: React.FC = () => {
                 transition={{ duration: 0.8, delay: 0.3 }}
                 className="animate-float"
               >
-                <StockChart />
+                <StockChart 
+                  symbol="NSE:NIFTY50"
+                  companyName="NIFTY 50"
+                  period="1M"
+                />
               </MotionBox>
             </GridItem>
           </Grid>

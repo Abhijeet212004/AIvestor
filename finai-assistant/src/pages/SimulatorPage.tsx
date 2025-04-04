@@ -1,95 +1,248 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Container, Grid, GridItem, Heading, Text, Flex, Button, HStack, VStack, Icon, SimpleGrid, Progress, Tag, Divider, Stat, StatLabel, StatNumber, StatHelpText, StatArrow, Tabs, TabList, TabPanels, Tab, TabPanel, Table, Thead, Tbody, Tr, Th, Td, Badge, Menu, MenuButton, MenuList, MenuItem, Input, Select, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, FormControl, FormLabel, NumberInput, NumberInputField, useDisclosure, useColorModeValue, InputGroup, InputLeftElement, NumberInputStepper, NumberIncrementStepper, NumberDecrementStepper, Switch, Spinner } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  ButtonGroup,
+  Container,
+  Flex,
+  Heading,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  Input,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+  useDisclosure,
+  Text,
+  Switch,
+  Spinner,
+  VStack,
+  HStack,
+  IconButton,
+  Tooltip,
+  Grid,
+  GridItem,
+  Tag,
+  Divider,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  StatArrow,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
+  Badge,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Select,
+  SimpleGrid,
+  InputGroup,
+  InputLeftElement,
+  Icon,
+  Progress,
+  FormControl,
+  FormLabel,
+} from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiPieChart, FiActivity, FiClock, FiArrowUp, FiArrowDown, FiChevronDown, FiPlus, FiSearch, FiRefreshCw, FiSettings, FiAlertCircle, FiCalendar } from 'react-icons/fi';
 import Navigation from '../components/Navigation';
 import StockChart from '../components/StockChart';
+import EnhancedStockChart from '../components/EnhancedStockChart';
 import AnimatedCard from '../components/AnimatedCard';
 import ProtectedFeature from '../components/ProtectedFeature';
-import { fetchStockData, fetchMultipleStocks, StockData } from '../services/stockDataService';
+import { fetchStockHistory, simulateStockData } from '../services/stockDataService';
 import MiniChart from '../components/MiniChart';
+import UpstoxAuth from '../components/UpstoxAuth';
+import { upstoxWebSocket } from '../services/upstoxWebSocket';
+import { upstoxService } from '../services/upstoxService';
+import { ChevronLeftIcon, ChevronRightIcon, ArrowUpIcon, ArrowDownIcon } from '@chakra-ui/icons';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  MarketStock,
+  PortfolioStock,
+  Portfolio,
+  Transaction,
+  StockHistoryData
+} from '../types/stock';
 
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
 
-// Update PortfolioStock interface to accommodate portfolio assets
-interface PortfolioStock extends Partial<StockData> {
-  id?: string;
-  name: string;
-  shares?: number;
-  avgBuyPrice?: number;
-  currentPrice?: number;
-  change?: number;
-  changePercentage?: number;
-  value?: number;
-  weight?: number;
-  sector?: string;
-  transactions?: { date: string; type: string; shares: number; price: number; total: number; }[];
-}
-
-// Define CSV stock interface for the stocks.csv file
-interface CSVStock {
-  SYMBOL: string;
-  'NAME OF COMPANY': string;
-  SECTOR: string;
-}
-
 // Add fallback stock data in case the CSV loading fails
-const fallbackStocks: CSVStock[] = [
+const fallbackStocks: PortfolioStock[] = [
   {
-    SYMBOL: 'RELIANCE',
-    'NAME OF COMPANY': 'Reliance Industries Limited',
-    SECTOR: 'Energy'
+    symbol: 'RELIANCE',
+    name: 'Reliance Industries Limited',
+    shares: 10,
+    purchasePrice: 142.53,
+    currentPrice: 156.37,
+    totalValue: 1563.70,
+    profitLoss: 1.42,
+    profitLossPercentage: 0.91,
+    purchaseDate: '2023-03-15',
+    lastUpdated: '2023-05-22',
+    sector: 'Energy',
+    transactions: [],
+    weight: 15.6370
   },
   {
-    SYMBOL: 'TCS',
-    'NAME OF COMPANY': 'Tata Consultancy Services Limited',
-    SECTOR: 'Technology'
+    symbol: 'TCS',
+    name: 'Tata Consultancy Services Limited',
+    shares: 6,
+    purchasePrice: 292.75,
+    currentPrice: 309.40,
+    totalValue: 1856.40,
+    profitLoss: -2.83,
+    profitLossPercentage: -0.91,
+    purchaseDate: '2023-02-08',
+    lastUpdated: '2023-05-22',
+    sector: 'Technology',
+    transactions: [],
+    weight: 18.564
   },
   {
-    SYMBOL: 'HDFCBANK',
-    'NAME OF COMPANY': 'HDFC Bank Limited',
-    SECTOR: 'Financial Services'
+    symbol: 'HDFCBANK',
+    name: 'HDFC Bank Limited',
+    shares: 10,
+    purchasePrice: 142.53,
+    currentPrice: 156.37,
+    totalValue: 1563.70,
+    profitLoss: 1.42,
+    profitLossPercentage: 0.91,
+    purchaseDate: '2023-03-15',
+    lastUpdated: '2023-05-22',
+    sector: 'Financial Services',
+    transactions: [],
+    weight: 15.637
   },
   {
-    SYMBOL: 'INFY',
-    'NAME OF COMPANY': 'Infosys Limited',
-    SECTOR: 'Technology'
+    symbol: 'INFY',
+    name: 'Infosys Limited',
+    shares: 10,
+    purchasePrice: 142.53,
+    currentPrice: 156.37,
+    totalValue: 1563.70,
+    profitLoss: 1.42,
+    profitLossPercentage: 0.91,
+    purchaseDate: '2023-03-15',
+    lastUpdated: '2023-05-22',
+    sector: 'Technology',
+    transactions: [],
+    weight: 15.637
   },
   {
-    SYMBOL: 'ICICIBANK',
-    'NAME OF COMPANY': 'ICICI Bank Limited',
-    SECTOR: 'Financial Services'
+    symbol: 'ICICIBANK',
+    name: 'ICICI Bank Limited',
+    shares: 10,
+    purchasePrice: 142.53,
+    currentPrice: 156.37,
+    totalValue: 1563.70,
+    profitLoss: 1.42,
+    profitLossPercentage: 0.91,
+    purchaseDate: '2023-03-15',
+    lastUpdated: '2023-05-22',
+    sector: 'Financial Services',
+    transactions: [],
+    weight: 15.637
   },
   {
-    SYMBOL: 'BHARTIARTL',
-    'NAME OF COMPANY': 'Bharti Airtel Limited',
-    SECTOR: 'Telecommunications'
+    symbol: 'BHARTIARTL',
+    name: 'Bharti Airtel Limited',
+    shares: 10,
+    purchasePrice: 142.53,
+    currentPrice: 156.37,
+    totalValue: 1563.70,
+    profitLoss: 1.42,
+    profitLossPercentage: 0.91,
+    purchaseDate: '2023-03-15',
+    lastUpdated: '2023-05-22',
+    sector: 'Telecommunications',
+    transactions: [],
+    weight: 15.637
   },
   {
-    SYMBOL: 'HINDUNILVR',
-    'NAME OF COMPANY': 'Hindustan Unilever Limited',
-    SECTOR: 'Consumer Goods'
+    symbol: 'HINDUNILVR',
+    name: 'Hindustan Unilever Limited',
+    shares: 10,
+    purchasePrice: 142.53,
+    currentPrice: 156.37,
+    totalValue: 1563.70,
+    profitLoss: 1.42,
+    profitLossPercentage: 0.91,
+    purchaseDate: '2023-03-15',
+    lastUpdated: '2023-05-22',
+    sector: 'Consumer Goods',
+    transactions: [],
+    weight: 15.637
   },
   {
-    SYMBOL: 'SBIN',
-    'NAME OF COMPANY': 'State Bank of India',
-    SECTOR: 'Financial Services'
+    symbol: 'ITC',
+    name: 'ITC Limited',
+    shares: 10,
+    purchasePrice: 142.53,
+    currentPrice: 156.37,
+    totalValue: 1563.70,
+    profitLoss: 1.42,
+    profitLossPercentage: 0.91,
+    purchaseDate: '2023-03-15',
+    lastUpdated: '2023-05-22',
+    sector: 'Consumer Goods',
+    transactions: [],
+    weight: 15.637
   },
   {
-    SYMBOL: 'ITC',
-    'NAME OF COMPANY': 'ITC Limited',
-    SECTOR: 'Consumer Goods'
+    symbol: 'SBIN',
+    name: 'State Bank of India',
+    shares: 10,
+    purchasePrice: 142.53,
+    currentPrice: 156.37,
+    totalValue: 1563.70,
+    profitLoss: 1.42,
+    profitLossPercentage: 0.91,
+    purchaseDate: '2023-03-15',
+    lastUpdated: '2023-05-22',
+    sector: 'Financial Services',
+    transactions: [],
+    weight: 15.637
   },
   {
-    SYMBOL: 'KOTAKBANK',
-    'NAME OF COMPANY': 'Kotak Mahindra Bank Limited',
-    SECTOR: 'Financial Services'
+    symbol: 'KOTAKBANK',
+    name: 'Kotak Mahindra Bank Limited',
+    shares: 10,
+    purchasePrice: 142.53,
+    currentPrice: 156.37,
+    totalValue: 1563.70,
+    profitLoss: 1.42,
+    profitLossPercentage: 0.91,
+    purchaseDate: '2023-03-15',
+    lastUpdated: '2023-05-22',
+    sector: 'Financial Services',
+    transactions: [],
+    weight: 15.637
   }
 ];
 
 // Improved CSV parser function
-const parseCSV = (csvText: string): CSVStock[] => {
+const parseCSV = (csvText: string): PortfolioStock[] => {
   try {
     console.log("Starting CSV parsing");
     // Split the CSV by lines and filter out empty lines
@@ -106,7 +259,7 @@ const parseCSV = (csvText: string): CSVStock[] => {
     console.log("CSV headers:", headers);
     
     // Process the remaining lines
-    const results: CSVStock[] = [];
+    const results: PortfolioStock[] = [];
     
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -129,27 +282,8 @@ const parseCSV = (csvText: string): CSVStock[] => {
       });
       
       // Only add if it has the required fields
-      if (stock.SYMBOL && stock['NAME OF COMPANY']) {
-        // If SECTOR is missing or N/A, assign a default sector
-        if (!stock.SECTOR || stock.SECTOR === 'N/A') {
-          // Assign a sector based on company name patterns or use a default
-          if (stock['NAME OF COMPANY'].toLowerCase().includes('bank') || 
-              stock['NAME OF COMPANY'].toLowerCase().includes('finance')) {
-            stock.SECTOR = 'Financial Services';
-          } else if (stock['NAME OF COMPANY'].toLowerCase().includes('tech') || 
-                    stock['NAME OF COMPANY'].toLowerCase().includes('software')) {
-            stock.SECTOR = 'Technology';
-          } else if (stock['NAME OF COMPANY'].toLowerCase().includes('pharma') || 
-                    stock['NAME OF COMPANY'].toLowerCase().includes('health')) {
-            stock.SECTOR = 'Healthcare';
-          } else {
-            // Default to a random sector for demonstration
-            const sectors = ['Technology', 'Financial Services', 'Healthcare', 'Consumer Goods', 'Energy'];
-            stock.SECTOR = sectors[Math.floor(Math.random() * sectors.length)];
-          }
-        }
-        
-        results.push(stock as CSVStock);
+      if (stock.symbol && stock.name) {
+        results.push(stock as PortfolioStock);
       }
     }
     
@@ -165,17 +299,29 @@ const SimulatorPage: React.FC = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [activeTab, setActiveTab] = useState(0);
   const [buyAmount, setBuyAmount] = useState(1000);
-  const [selectedStock, setSelectedStock] = useState<PortfolioStock | null>(null);
+  const [selectedStock, setSelectedStock] = useState<MarketStock | PortfolioStock | null>(null);
+  const [selectedChartInterval, setSelectedChartInterval] = useState<string>('1M');
   const [transactionType, setTransactionType] = useState<'buy' | 'sell'>('buy');
-  const [marketStocks, setMarketStocks] = useState<StockData[]>([]);
+  const [marketStocks, setMarketStocks] = useState<MarketStock[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [showStockDetail, setShowStockDetail] = useState(false);
-  const [csvStocks, setCsvStocks] = useState<CSVStock[]>([]);
+  const [csvStocks, setCsvStocks] = useState<PortfolioStock[]>([]);
   const [isLoadingCSV, setIsLoadingCSV] = useState(true);
   const [csvSearchTerm, setCsvSearchTerm] = useState<string>('');
   const [csvSelectedSector, setCsvSelectedSector] = useState<string>('');
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [isUpstoxAuthenticated, setIsUpstoxAuthenticated] = useState<boolean>(false);
+  const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
+  const navigate = useNavigate();
+  const [portfolio, setPortfolio] = useState<Portfolio>({
+    cash: 100000,
+    assets: [],
+    transactions: [],
+    initialInvestment: 100000
+  });
+  const [error, setError] = useState<string | null>(null);
   
   // Mock portfolio data
   const [mockPortfolio, setMockPortfolio] = useState({
@@ -276,39 +422,31 @@ const SimulatorPage: React.FC = () => {
     ]
   });
 
-  // Fetch actual stock data from backend (changed from simulation)
+  // Load real market data
   useEffect(() => {
     const fetchRealStockData = async () => {
       try {
         setLoading(true);
-        
-        // List of popular Indian stocks
+        // List of popular Indian stocks for market data
         const symbols = [
-          'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK',
-          'HINDUNILVR', 'ITC', 'SBIN', 'BHARTIARTL', 'KOTAKBANK',
-          'WIPRO', 'NIFTY50', 'BANKNIFTY', 'TATAMOTORS', 'MARUTI'
+          'NSE:RELIANCE', 'NSE:TCS', 'NSE:HDFCBANK', 'NSE:INFY',
+          'NSE:ICICIBANK', 'NSE:HINDUNILVR', 'NSE:SBIN', 'NSE:BHARTIARTL',
+          'NSE:ITC', 'NSE:TATAMOTORS', 'NSE:KOTAKBANK', 'NSE:MARUTI'
         ];
         
-        // Directly fetch from our backend API (which uses yfinance)
-        const response = await fetch('/api/stocks/multiple', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ symbols })
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch stock data');
-        }
-        
-        const stocksData = await response.json();
+        const stocksData = await upstoxService.fetchMarketData(symbols);
         setMarketStocks(stocksData);
       } catch (error) {
         console.error('Error fetching market stocks:', error);
         // Fallback to simulation if API fails
-        const fallbackData = await fetchMultipleStocks([
-          'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK',
-          'HINDUNILVR', 'ITC', 'SBIN', 'BHARTIARTL', 'KOTAKBANK'
-        ]);
+        const symbols = [
+          'NSE:RELIANCE', 'NSE:TCS', 'NSE:HDFCBANK', 'NSE:INFY',
+          'NSE:ICICIBANK', 'NSE:HINDUNILVR', 'NSE:SBIN', 'NSE:BHARTIARTL',
+          'NSE:ITC', 'NSE:TATAMOTORS', 'NSE:KOTAKBANK', 'NSE:MARUTI'
+        ];
+        const fallbackData = symbols.map(symbol => 
+          simulateStockData(symbol.split(':')[1] || symbol)
+        );
         setMarketStocks(fallbackData);
       } finally {
         setLoading(false);
@@ -343,7 +481,7 @@ const SimulatorPage: React.FC = () => {
         
         // Filter out any incomplete data
         const validStocks = parsed.filter(
-          stock => stock.SYMBOL && stock['NAME OF COMPANY'] && stock.SECTOR
+          stock => stock.symbol && stock.name && stock.sector
         );
         console.log("Valid CSV stocks:", validStocks.length);
         
@@ -372,43 +510,38 @@ const SimulatorPage: React.FC = () => {
   }, []);
   
   // Convert CSV stock to StockData format
-  const mapCSVStockToStockData = (csvStock: CSVStock): StockData => {
+  const mapCSVStockToStockData = (csvStock: PortfolioStock): MarketStock => {
     // Generate a realistic price between 500 and 5000
     const price = Math.floor(Math.random() * 4500) + 500;
-    
-    // Generate realistic change (-5% to +5%)
-    const changePercent = (Math.random() * 10) - 5;
-    const change = price * (changePercent / 100);
-    
-    // Generate realistic volume (10,000 to 1,000,000)
-    const volume = `${Math.floor(Math.random() * 990000) + 10000}`;
-    
+    const change = (Math.random() - 0.5) * 10;
+    const changePercent = (change / price) * 100;
+
     return {
-      symbol: csvStock.SYMBOL,
-      name: csvStock['NAME OF COMPANY'],
-      price: price,
-      change: change,
-      changePercentage: changePercent,
-      volume: volume,
-      marketCap: `₹${(price * (Math.floor(Math.random() * 100000) + 10000) / 10000000).toFixed(2)}M`,
-      previousClose: price - (Math.random() * 50) - 25,
-      open: price - (Math.random() * 40) - 20,
-      dayHigh: price + (Math.random() * 30),
-      dayLow: price - (Math.random() * 30),
-      yearHigh: price + (Math.random() * 200),
-      yearLow: price - (Math.random() * 200),
-      sector: csvStock.SECTOR,
-      timestamp: new Date()
+      SYMBOL: csvStock.symbol,
+      NAME: csvStock.name,
+      PRICE: price,
+      CHANGE: change,
+      CHANGE_PERCENT: changePercent,
+      VOLUME: Math.floor(Math.random() * 1000000).toString(),
+      MARKET_CAP: `${Math.floor(Math.random() * 100000)} Cr`,
+      PREV_CLOSE: price - (Math.random() * 50 - 25),
+      OPEN: price - (Math.random() * 40 - 20),
+      HIGH: price + Math.random() * 20,
+      LOW: price - Math.random() * 20,
+      CLOSE: price,
+      SECTOR: csvStock.sector || 'Technology',
+      timestamp: new Date(),
+      lastUpdated: new Date().toISOString()
     };
   };
 
   // Filter stocks based on search and sector
   const filteredStocks = marketStocks.filter(stock => {
     const matchesSearch = searchTerm === '' || 
-      stock.symbol.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      stock.name.toLowerCase().includes(searchTerm.toLowerCase());
+      stock.SYMBOL.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      stock.NAME.toLowerCase().includes(searchTerm.toLowerCase());
       
-    const matchesSector = selectedSector === null || stock.sector === selectedSector;
+    const matchesSector = selectedSector === null || stock.SECTOR === selectedSector;
     
     return matchesSearch && matchesSector;
   });
@@ -416,57 +549,57 @@ const SimulatorPage: React.FC = () => {
   // Filter CSV stocks based on search and sector
   const filteredCsvStocks = csvStocks.filter(stock => {
     const matchesSearch = !csvSearchTerm || 
-      stock.SYMBOL.toLowerCase().includes(csvSearchTerm.toLowerCase()) || 
-      stock['NAME OF COMPANY'].toLowerCase().includes(csvSearchTerm.toLowerCase());
+      stock.symbol.toLowerCase().includes(csvSearchTerm.toLowerCase()) || 
+      stock.name.toLowerCase().includes(csvSearchTerm.toLowerCase());
       
-    const matchesSector = !csvSelectedSector || stock.SECTOR === csvSelectedSector;
+    const matchesSector = !csvSelectedSector || stock.sector === csvSelectedSector;
     
     return matchesSearch && matchesSector;
   });
 
   // Updated handler that sets showStockDetail flag
-  const handleStockSelection = async (stock: StockData) => {
+  const handleStockSelection = async (stock: MarketStock) => {
     try {
-      // Fetch detailed stock data from backend
-      const response = await fetch(`/api/stock/${stock.symbol}`);
+      // Fetch detailed historical data for the selected stock
+      const historyData = await upstoxService.fetchHistoricalData(
+        `NSE:${stock.SYMBOL}`, 
+        '1day'
+      );
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch detailed stock data');
-      }
-      
-      const detailedStock = await response.json();
-      setSelectedStock(detailedStock);
+      // Create a new object with the extended properties
+      const extendedStock: MarketStock & { historyData?: StockHistoryData[] } = {
+        ...stock,
+        historyData
+      };
+      setSelectedStock(extendedStock);
       setShowStockDetail(true); // Show detail view
     } catch (error) {
       console.error('Error fetching detailed stock data:', error);
-      setSelectedStock(stock);
+    setSelectedStock(stock);
       setShowStockDetail(true); // Show detail view even if fetch fails
     }
   };
 
   // New handler for portfolio assets
   const handlePortfolioAssetSelection = (asset: PortfolioStock) => {
-    // Create a simplified StockData object from portfolio asset
-    const stockDataFromAsset: StockData = {
-      symbol: asset.id || '',
-      name: asset.name,
-      price: asset.currentPrice || 0,
-      change: asset.change || 0,
-      changePercentage: asset.changePercentage || 0,
-      volume: '',
-      marketCap: '',
-      previousClose: asset.currentPrice || 0,
-      open: asset.currentPrice || 0,
-      dayHigh: asset.currentPrice || 0,
-      dayLow: asset.currentPrice || 0,
-      yearHigh: asset.currentPrice || 0,
-      yearLow: asset.currentPrice || 0,
-      sector: asset.sector || '',
-      timestamp: new Date()
-    };
-
-    setSelectedStock(asset);
-    setTransactionType('sell'); // Default to sell for portfolio assets
+    setSelectedStock({
+      SYMBOL: asset.symbol,
+      NAME: asset.name,
+      PRICE: asset.currentPrice,
+      CHANGE: asset.profitLoss,
+      CHANGE_PERCENT: (asset.profitLoss / asset.purchasePrice) * 100,
+      VOLUME: '0',
+      MARKET_CAP: '0',
+      PREV_CLOSE: asset.purchasePrice,
+      OPEN: asset.purchasePrice,
+      HIGH: asset.currentPrice,
+      LOW: asset.purchasePrice,
+      CLOSE: asset.currentPrice,
+      SECTOR: asset.sector || '',
+      timestamp: new Date(),
+      lastUpdated: new Date().toISOString(),
+    });
+    setTransactionType('sell');
     onOpen();
   };
 
@@ -487,7 +620,7 @@ const SimulatorPage: React.FC = () => {
       
       // Filter out any incomplete data
       const validStocks = parsed.filter(
-        stock => stock.SYMBOL && stock['NAME OF COMPANY'] && stock.SECTOR
+        stock => stock.symbol && stock.name && stock.sector
       );
       
       // Take only the first 100 stocks to avoid performance issues
@@ -503,110 +636,166 @@ const SimulatorPage: React.FC = () => {
   };
 
   // Enhanced stock selection handler for CSV stocks
-  const handleCSVStockSelection = (csvStock: CSVStock) => {
+  const handleCSVStockSelection = (csvStock: PortfolioStock) => {
     const stockData = mapCSVStockToStockData(csvStock);
     setSelectedStock(stockData);
     setShowStockDetail(true);
   };
 
-  // Enhanced transaction handler
+  // Updated handleTransaction function
   const handleTransaction = () => {
-    if (!selectedStock) return;
-    
-    // Create a transaction record
-    const stockPrice = (selectedStock as StockData)?.price || (selectedStock as PortfolioStock)?.currentPrice || 0;
-    const shares = Math.floor(buyAmount / stockPrice);
-    const totalCost = shares * stockPrice;
-    
-    const date = new Date().toISOString().split('T')[0];
-    const ticker = (selectedStock as StockData)?.symbol || (selectedStock as PortfolioStock)?.id || '';
-    
-    // For a buy transaction
-    if (transactionType === 'buy' && ticker) {
-      // Update cash balance
-      const updatedPortfolio = {
-        ...mockPortfolio,
-        cash: mockPortfolio.cash - totalCost
-      };
+    if (transactionType === 'buy') {
+      if (!selectedStock || !buyAmount) return;
+  
+      const stockPrice = (selectedStock as MarketStock).PRICE || (selectedStock as PortfolioStock).currentPrice;
+      const shares = Math.floor(buyAmount / stockPrice);
+      const transactionAmount = shares * stockPrice;
       
-      // Check if stock already exists in portfolio
-      const existingAssetIndex = mockPortfolio.assets.findIndex(asset => asset.id === ticker);
-      
-      if (existingAssetIndex >= 0) {
-        // Update existing asset
-        const existingAsset = mockPortfolio.assets[existingAssetIndex];
-        const totalShares = (existingAsset.shares || 0) + shares;
-        const totalValue = totalShares * stockPrice;
-        const avgBuyPrice = ((existingAsset.avgBuyPrice || 0) * (existingAsset.shares || 0) + totalCost) / totalShares;
-        
-        updatedPortfolio.assets = [
-          ...mockPortfolio.assets.slice(0, existingAssetIndex),
-          {
-            ...existingAsset,
-            shares: totalShares,
-            avgBuyPrice: avgBuyPrice,
-            currentPrice: stockPrice,
-            value: totalValue,
-            transactions: [
-              ...(existingAsset.transactions || []),
-              { date, type: 'buy', shares, price: stockPrice, total: totalCost }
-            ]
-          },
-          ...mockPortfolio.assets.slice(existingAssetIndex + 1)
-        ];
-      } else {
-        // Add new asset
-        updatedPortfolio.assets = [
-          ...mockPortfolio.assets,
-          {
-            id: ticker,
-            name: selectedStock.name,
-            value: totalCost,
-            shares,
-            avgBuyPrice: stockPrice,
-            currentPrice: stockPrice,
-            change: 0,
-            changePercentage: 0,
-            weight: (totalCost / updatedPortfolio.totalValue) * 100,
-            sector: (selectedStock as StockData)?.sector || '',
-            transactions: [
-              { date, type: 'buy', shares, price: stockPrice, total: totalCost }
-            ]
-          }
-        ];
+      if (transactionAmount > portfolio.cash) {
+        alert('Insufficient funds');
+        return;
       }
       
-      // Add to transactions history
-      updatedPortfolio.transactions = [
-        { date, ticker, type: 'buy', shares, price: stockPrice, total: totalCost },
-        ...mockPortfolio.transactions
-      ];
+      setPortfolio(prev => {
+        const newCash = prev.cash - transactionAmount;
+        const existingAsset = prev.assets.find(a => a.symbol === (selectedStock as MarketStock).SYMBOL);
+        
+        if (existingAsset) {
+          const newShares = existingAsset.shares + shares;
+          const newAveragePurchasePrice = 
+            (existingAsset.purchasePrice * existingAsset.shares + stockPrice * shares) / newShares;
+          
+          return {
+            ...prev,
+            cash: newCash,
+            assets: prev.assets.map(a =>
+              a.symbol === (selectedStock as MarketStock).SYMBOL
+                ? {
+                    ...a,
+                    shares: newShares,
+                    purchasePrice: newAveragePurchasePrice,
+                    currentPrice: stockPrice,
+                    totalValue: newShares * stockPrice,
+                    profitLoss: (stockPrice - newAveragePurchasePrice) * newShares,
+                    profitLossPercentage: ((stockPrice - newAveragePurchasePrice) / newAveragePurchasePrice) * 100,
+                    lastUpdated: new Date().toISOString()
+                  }
+                : a
+            ),
+            transactions: [
+              ...prev.transactions,
+              {
+                date: new Date(),
+                ticker: (selectedStock as MarketStock).SYMBOL,
+                type: 'buy',
+                shares,
+                price: stockPrice,
+                total: transactionAmount
+              }
+            ]
+          };
+        } else {
+          const newAsset: PortfolioStock = {
+            symbol: (selectedStock as MarketStock).SYMBOL,
+            name: (selectedStock as MarketStock).NAME,
+            shares,
+            purchasePrice: stockPrice,
+            currentPrice: stockPrice,
+            totalValue: shares * stockPrice,
+            profitLoss: 0,
+            profitLossPercentage: 0,
+            purchaseDate: new Date().toISOString(),
+            lastUpdated: new Date().toISOString(),
+            weight: (transactionAmount / (transactionAmount + newCash)) * 100,
+            sector: (selectedStock as MarketStock).SECTOR,
+            transactions: [],
+          };
+          
+          return {
+            ...prev,
+            cash: newCash,
+            assets: [...prev.assets, newAsset],
+            transactions: [
+              ...prev.transactions,
+              {
+                date: new Date(),
+                ticker: (selectedStock as MarketStock).SYMBOL,
+                type: 'buy',
+                shares,
+                price: stockPrice,
+                total: transactionAmount
+              }
+            ]
+          };
+        }
+      });
+    } else {
+      // For sell transactions
+      if (!selectedStock) return;
       
-      // Update total portfolio value
-      updatedPortfolio.totalValue = updatedPortfolio.assets.reduce(
-        (total, asset) => total + (asset.value || 0), 
-        0
-      ) + updatedPortfolio.cash;
+      const stockPrice = (selectedStock as MarketStock).PRICE || (selectedStock as PortfolioStock).currentPrice;
+      // Use buyAmount as the number of shares to sell
+      const shares = Math.floor(buyAmount || 0);
+      const transactionAmount = shares * stockPrice;
       
-      // Update return percentage
-      updatedPortfolio.returnPercentage = ((updatedPortfolio.totalValue - updatedPortfolio.initialInvestment) / updatedPortfolio.initialInvestment) * 100;
+      const existingAsset = portfolio.assets.find(a => a.symbol === (selectedStock as MarketStock).SYMBOL);
+      if (!existingAsset || existingAsset.shares < shares) {
+        alert('Insufficient shares');
+        return;
+      }
       
-      // Update mock portfolio state
-      setMockPortfolio(updatedPortfolio);
+      setPortfolio(prev => {
+        const newCash = prev.cash + transactionAmount;
+        const newShares = existingAsset.shares - shares;
+        
+        if (newShares === 0) {
+          return {
+            ...prev,
+            cash: newCash,
+            assets: prev.assets.filter(a => a.symbol !== (selectedStock as MarketStock).SYMBOL),
+            transactions: [
+              ...prev.transactions,
+              {
+                date: new Date(),
+                ticker: (selectedStock as MarketStock).SYMBOL,
+                type: 'sell',
+                shares: shares,
+                price: stockPrice,
+                total: transactionAmount
+              }
+            ]
+          };
+        } else {
+          return {
+            ...prev,
+            cash: newCash,
+            assets: prev.assets.map(a =>
+              a.symbol === (selectedStock as MarketStock).SYMBOL
+                ? {
+                    ...a,
+                    shares: newShares,
+                    totalValue: newShares * stockPrice,
+                    lastUpdated: new Date().toISOString()
+                  }
+                : a
+            ),
+            transactions: [
+              ...prev.transactions,
+              {
+                date: new Date(),
+                ticker: (selectedStock as MarketStock).SYMBOL,
+                type: 'sell',
+                shares: shares,
+                price: stockPrice,
+                total: transactionAmount
+              }
+            ]
+          };
+        }
+      });
     }
     
-    // For a sell transaction (simplified)
-    if (transactionType === 'sell' && ticker) {
-      // Similar logic for selling would go here
-      // For brevity, we're focusing on the buy functionality
-    }
-    
-    // Close modal
     onClose();
-    
-    // Reset form fields
-    setBuyAmount(1000);
-    setTransactionType('buy');
   };
 
   const allocations = [
@@ -620,7 +809,90 @@ const SimulatorPage: React.FC = () => {
   const simulatorGradient = "linear-gradient(135deg, #10B981 0%, #3B82F6 100%)";
 
   // List of all sectors for filtering
-  const sectors = Array.from(new Set(marketStocks.map(stock => stock.sector).filter(Boolean)));
+  const sectors = Array.from(new Set(marketStocks.map(stock => stock.SECTOR).filter(Boolean)));
+
+  // Add real-time data refresh effect
+  useEffect(() => {
+    // Set up WebSocket callback for real-time data
+    upstoxWebSocket.setOnDataCallback((data: MarketStock) => {
+      setMarketStocks(prevStocks => {
+        const newStocks = [...prevStocks];
+        const index = newStocks.findIndex(stock => stock.SYMBOL === data.SYMBOL);
+        if (index !== -1) {
+          newStocks[index] = {
+            ...newStocks[index],
+            ...data,
+            lastUpdated: new Date().toISOString()
+          };
+        } else {
+          newStocks.push(data);
+        }
+        return newStocks;
+      });
+      setLastUpdated(new Date());
+    });
+
+    // Set up auto-refresh interval for market data
+    if (autoRefresh) {
+      const refreshInterval = setInterval(() => {
+        // Refresh market data every 5 minutes
+        refreshCSVData();
+        setLastUpdated(new Date());
+      }, 5 * 60 * 1000); // 5 minutes
+      
+      return () => {
+        clearInterval(refreshInterval);
+        upstoxWebSocket.disconnect();
+      };
+    }
+  }, [autoRefresh]);
+
+  // Handle Upstox auth state change
+  const handleAuthStateChange = (isAuthenticated: boolean) => {
+    setIsUpstoxAuthenticated(isAuthenticated);
+    // Refresh data when authentication state changes
+    if (isAuthenticated) {
+      refreshCSVData();
+    }
+  };
+
+  // Add toggle for auto-refresh
+  const toggleAutoRefresh = () => {
+    setAutoRefresh(!autoRefresh);
+    if (!autoRefresh) {
+      // Reconnect WebSocket when enabling auto-refresh
+      upstoxWebSocket.connect();
+      upstoxWebSocket.setOnDataCallback((data: MarketStock) => {
+        setMarketStocks(prevStocks => {
+          const newStocks = [...prevStocks];
+          const index = newStocks.findIndex(stock => stock.SYMBOL === data.SYMBOL);
+          if (index !== -1) {
+            newStocks[index] = {
+              ...newStocks[index],
+              ...data,
+              lastUpdated: new Date().toISOString()
+            };
+          } else {
+            newStocks.push(data);
+          }
+          return newStocks;
+        });
+        setLastUpdated(new Date());
+      });
+    } else {
+      // Disconnect WebSocket when disabling auto-refresh
+      upstoxWebSocket.disconnect();
+    }
+  };
+
+  const calculatePortfolioValue = () => {
+    return portfolio.assets.reduce((total, asset) => total + asset.totalValue, portfolio.cash);
+  };
+
+  const calculatePortfolioReturn = () => {
+    const totalValue = calculatePortfolioValue();
+    return ((totalValue - portfolio.initialInvestment) / portfolio.initialInvestment) * 100;
+  };
 
   return (
     <Box minH="100vh" bg="darkBlue.900">
@@ -677,32 +949,45 @@ const SimulatorPage: React.FC = () => {
       
       <Box as="main" pt="120px">
         <Container maxW="container.xl" px={4}>
-          {/* Header Section with enhanced styling */}
-          <Box mb={10} position="relative">
-            <MotionBox
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              position="absolute"
-              top="-30px"
-              left="-10px"
-              width="150px"
-              height="150px"
-              borderRadius="full"
-              bg="rgba(16, 185, 129, 0.1)"
-              filter="blur(25px)"
-              zIndex="-1"
-            />
-            
-            <Heading as="h1" size="xl" mb={4} className="text-gradient" display="inline-flex" alignItems="center">
-              <Icon as={FiTrendingUp} mr={3} />
-              Virtual Investment Simulator
-            </Heading>
-            
-            <Text fontSize="lg" opacity={0.8} maxW="800px">
-              Practice investing without risking real money. Start with ₹10,000 virtual cash, build a portfolio, and track your performance over time.
-            </Text>
+          {/* Add Upstox Auth component near the top of the page */}
+          <Box mb={6}>
+            <UpstoxAuth onAuthStateChange={handleAuthStateChange} />
           </Box>
+          
+          {/* Dashboard Heading */}
+          <Flex justify="space-between" align="flex-start" mb={8}>
+            <Box>
+              <Heading size="xl">Trading Simulator</Heading>
+              <Text color="gray.400">Practice trading with virtual money and real-time stock data</Text>
+          </Box>
+            <Flex align="center">
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Icon as={FiRefreshCw} />}
+                onClick={refreshCSVData}
+                mr={4}
+                isLoading={isLoadingCSV}
+              >
+                Refresh Data
+              </Button>
+              <HStack>
+                <Switch
+                  isChecked={autoRefresh}
+                  onChange={toggleAutoRefresh}
+                  colorScheme="blue"
+                />
+                <Text fontSize="sm" color="gray.400">
+                  Auto-refresh {autoRefresh ? 'On' : 'Off'}
+                </Text>
+              </HStack>
+              {lastUpdated && (
+                <Text fontSize="sm" color="gray.400" ml={4}>
+                  Last updated: {lastUpdated.toLocaleTimeString()}
+                </Text>
+              )}
+            </Flex>
+          </Flex>
 
           {/* Portfolio Summary */}
           <ProtectedFeature
@@ -741,11 +1026,11 @@ const SimulatorPage: React.FC = () => {
                     <Box>
                       <Text color="gray.400">Total Value</Text>
                       <Flex align="baseline">
-                        <Heading size="xl">₹{mockPortfolio.totalValue.toLocaleString()}</Heading>
+                        <Heading size="xl">₹{calculatePortfolioValue().toLocaleString()}</Heading>
                         <Stat ml={4}>
                           <StatHelpText>
-                            <StatArrow type={mockPortfolio.returnPercentage >= 0 ? 'increase' : 'decrease'} />
-                            {mockPortfolio.returnPercentage}% overall
+                            <StatArrow type={calculatePortfolioReturn() >= 0 ? 'increase' : 'decrease'} />
+                            {calculatePortfolioReturn().toFixed(2)}% overall
                           </StatHelpText>
                         </Stat>
                       </Flex>
@@ -754,16 +1039,16 @@ const SimulatorPage: React.FC = () => {
                     <SimpleGrid columns={2} spacing={4}>
                       <Stat>
                         <StatLabel>Cash Available</StatLabel>
-                        <StatNumber>₹{mockPortfolio.cash.toLocaleString()}</StatNumber>
+                        <StatNumber>₹{portfolio.cash.toLocaleString()}</StatNumber>
                       </Stat>
                       <Stat>
                         <StatLabel>Daily Change</StatLabel>
-                        <StatNumber color={mockPortfolio.dailyChange >= 0 ? 'green.400' : 'red.400'}>
-                          ₹{Math.abs(mockPortfolio.dailyChange).toLocaleString()}
+                        <StatNumber color={calculatePortfolioReturn() >= 0 ? 'green.400' : 'red.400'}>
+                          ₹{Math.abs(calculatePortfolioReturn()).toFixed(2)}
                         </StatNumber>
                         <StatHelpText>
-                          <StatArrow type={mockPortfolio.dailyChange >= 0 ? 'increase' : 'decrease'} />
-                          {Math.abs(mockPortfolio.dailyChangePercentage)}%
+                          <StatArrow type={calculatePortfolioReturn() >= 0 ? 'increase' : 'decrease'} />
+                          {Math.abs(calculatePortfolioReturn())}%
                         </StatHelpText>
                       </Stat>
                     </SimpleGrid>
@@ -771,20 +1056,20 @@ const SimulatorPage: React.FC = () => {
                     <Box>
                       <Flex justify="space-between" mb={2}>
                         <Text fontSize="sm">Initial Investment</Text>
-                        <Text fontSize="sm">₹{mockPortfolio.initialInvestment.toLocaleString()}</Text>
+                        <Text fontSize="sm">₹{portfolio.initialInvestment.toLocaleString()}</Text>
                       </Flex>
                       <Flex justify="space-between" mb={2}>
                         <Text fontSize="sm">Current Value</Text>
-                        <Text fontSize="sm">₹{mockPortfolio.totalValue.toLocaleString()}</Text>
+                        <Text fontSize="sm">₹{calculatePortfolioValue().toLocaleString()}</Text>
                       </Flex>
                       <Flex justify="space-between" mb={4}>
                         <Text fontSize="sm">Total Return</Text>
                         <Text 
                           fontSize="sm" 
                           fontWeight="bold"
-                          color={mockPortfolio.returnPercentage >= 0 ? 'green.400' : 'red.400'}
+                          color={calculatePortfolioReturn() >= 0 ? 'green.400' : 'red.400'}
                         >
-                          ₹{(mockPortfolio.totalValue - mockPortfolio.initialInvestment).toLocaleString()} ({mockPortfolio.returnPercentage}%)
+                          ₹{(calculatePortfolioValue() - portfolio.initialInvestment).toLocaleString()} ({calculatePortfolioReturn().toFixed(2)}%)
                         </Text>
                       </Flex>
                       
@@ -799,14 +1084,14 @@ const SimulatorPage: React.FC = () => {
                   <Flex direction="column" h="100%">
                     <Heading size="md" mb={4}>Portfolio Performance</Heading>
                     <Box flex="1" minH="200px">
-                      <StockChart 
-                        data={[
-                          { date: 'Jan 1', price: 100, volume: 5000000 },
-                          { date: 'Feb 1', price: 120, volume: 6200000 },
-                          { date: 'Mar 1', price: 110, volume: 4800000 },
-                          { date: 'Apr 1', price: 130, volume: 7500000 },
-                          { date: 'May 1', price: 150, volume: 8900000 }
-                        ]}
+                      <EnhancedStockChart 
+                        symbol="NSE:NIFTY50"
+                        name="Your Portfolio"
+                        currentPrice={calculatePortfolioValue()}
+                        previousClose={portfolio.initialInvestment}
+                        change={calculatePortfolioValue() - portfolio.initialInvestment}
+                        changePercent={calculatePortfolioReturn()}
+                        onRefresh={() => refreshCSVData()}
                       />
                     </Box>
                     <HStack spacing={6} mt={6} justify="center">
@@ -876,32 +1161,32 @@ const SimulatorPage: React.FC = () => {
                         </Tr>
                       </Thead>
                       <Tbody>
-                        {mockPortfolio.assets.map((asset) => (
-                          <Tr key={asset.id} _hover={{ bg: "whiteAlpha.100" }}>
-                            <Td fontWeight="bold">{asset.id}</Td>
+                        {portfolio.assets.map((asset) => (
+                          <Tr key={asset.symbol} _hover={{ bg: "whiteAlpha.100" }}>
+                            <Td fontWeight="bold">{asset.symbol}</Td>
                             <Td>{asset.name}</Td>
                             <Td isNumeric>{asset.shares}</Td>
-                            <Td isNumeric>₹{asset.avgBuyPrice?.toFixed(2) || 'N/A'}</Td>
+                            <Td isNumeric>₹{asset.purchasePrice?.toFixed(2) || 'N/A'}</Td>
                             <Td isNumeric>
                               <HStack justify="flex-end" spacing={1}>
                                 <Text>₹{asset.currentPrice?.toFixed(2) || 'N/A'}</Text>
                                 <Icon 
-                                  as={asset.change && asset.change >= 0 ? FiArrowUp : FiArrowDown} 
-                                  color={asset.change && asset.change >= 0 ? 'green.400' : 'red.400'}
+                                  as={asset.profitLoss >= 0 ? FiArrowUp : FiArrowDown} 
+                                  color={asset.profitLoss >= 0 ? 'green.400' : 'red.400'}
                                   boxSize={3}
                                 />
                               </HStack>
                             </Td>
-                            <Td isNumeric>₹{asset.value?.toFixed(2) || 'N/A'}</Td>
+                            <Td isNumeric>₹{asset.totalValue.toFixed(2)}</Td>
                             <Td isNumeric>
                               <Text 
                                 color={
-                                  asset.currentPrice && asset.currentPrice > (asset.avgBuyPrice || 0) ? 'green.400' : 
-                                  asset.currentPrice && asset.currentPrice < (asset.avgBuyPrice || 0) ? 'red.400' : 
+                                  asset.currentPrice && asset.currentPrice > asset.purchasePrice ? 'green.400' : 
+                                  asset.currentPrice && asset.currentPrice < asset.purchasePrice ? 'red.400' : 
                                   'gray.400'
                                 }
                               >
-                                {(((asset.currentPrice || 0) - (asset.avgBuyPrice || 0)) / (asset.avgBuyPrice || 1) * 100).toFixed(2)}%
+                                {asset.profitLossPercentage.toFixed(2)}%
                               </Text>
                             </Td>
                             <Td isNumeric>{asset.weight?.toFixed(2)}%</Td>
@@ -959,9 +1244,9 @@ const SimulatorPage: React.FC = () => {
                         </Tr>
                       </Thead>
                       <Tbody>
-                        {mockPortfolio.transactions.map((transaction, index) => (
+                        {portfolio.transactions.map((transaction, index) => (
                           <Tr key={index} _hover={{ bg: "whiteAlpha.100" }}>
-                            <Td>{transaction.date}</Td>
+                            <Td>{transaction.date instanceof Date ? transaction.date.toLocaleDateString() : new Date(transaction.date).toLocaleDateString()}</Td>
                             <Td>
                               <Badge
                                 colorScheme={
@@ -995,33 +1280,26 @@ const SimulatorPage: React.FC = () => {
                       <Flex align="center">
                         <InputGroup size="sm" maxW="200px" mr={4}>
                           <InputLeftElement pointerEvents="none">
-                            <Icon as={FiSearch} color="gray.400" />
-                          </InputLeftElement>
-                          <Input 
+                              <Icon as={FiSearch} color="gray.400" />
+                            </InputLeftElement>
+                            <Input 
                             placeholder="Search stocks..." 
-                            value={csvSearchTerm}
-                            onChange={(e) => setCsvSearchTerm(e.target.value)}
-                          />
-                        </InputGroup>
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                          </InputGroup>
                         <Select 
                           size="sm" 
                           maxW="150px" 
                           mr={4} 
                           placeholder="All Sectors"
-                          value={csvSelectedSector}
-                          onChange={(e) => setCsvSelectedSector(e.target.value)}
+                          value={selectedSector || ""}
+                          onChange={(e) => setSelectedSector(e.target.value || null)}
                         >
                           <option value="">All Sectors</option>
-                          <option value="Technology">Technology</option>
-                          <option value="Healthcare">Healthcare</option>
-                          <option value="Financial Services">Financial Services</option>
-                          <option value="Consumer Goods">Consumer Goods</option>
-                          <option value="Energy">Energy</option>
-                          <option value="RealEstate">Real Estate</option>
-                          <option value="Utilities">Utilities</option>
-                          <option value="Industrials">Industrials</option>
-                          <option value="Materials">Materials</option>
-                          <option value="Telecommunications">Telecommunications</option>
+                          {sectors.map((sector) => (
+                            <option key={sector} value={sector}>{sector}</option>
+                          ))}
                         </Select>
                         <Button
                           size="sm"
@@ -1031,6 +1309,23 @@ const SimulatorPage: React.FC = () => {
                         >
                           Refresh
                         </Button>
+                      </Flex>
+                      </Flex>
+                      
+                    <Flex justify="space-between" align="center" mb={4}>
+                      <Text fontSize="sm" color="gray.400">
+                        {isUpstoxAuthenticated 
+                          ? "Using real-time market data from Upstox" 
+                          : "Using simulated market data"}
+                      </Text>
+                      <Flex align="center">
+                        <Text fontSize="sm" color="gray.400" mr={2}>Auto-refresh:</Text>
+                        <Switch 
+                          size="sm" 
+                          isChecked={autoRefresh} 
+                          onChange={toggleAutoRefresh} 
+                          colorScheme="blue"
+                        />
                       </Flex>
                     </Flex>
 
@@ -1043,7 +1338,7 @@ const SimulatorPage: React.FC = () => {
                       // Stock Detail View
                       <Box className="glass-card" borderRadius="md" p={6}>
                         <Flex justify="space-between" mb={6}>
-                          <Heading size="md">{selectedStock.name} ({(selectedStock as StockData)?.symbol || (selectedStock as PortfolioStock)?.id})</Heading>
+                          <Heading size="md">{(selectedStock as MarketStock)?.NAME || (selectedStock as PortfolioStock)?.name} ({(selectedStock as MarketStock)?.SYMBOL || (selectedStock as PortfolioStock)?.symbol})</Heading>
                           <Button 
                             leftIcon={<Icon as={FiArrowDown} />} 
                             variant="outline" 
@@ -1056,61 +1351,87 @@ const SimulatorPage: React.FC = () => {
                         
                         <Grid templateColumns={{ base: "1fr", lg: "1fr 1fr" }} gap={8} mb={6}>
                           <Box height="450px" p={4} className="glass-card">
-                            <StockChart 
-                              symbol={(selectedStock as StockData)?.symbol || (selectedStock as PortfolioStock)?.id}
-                              companyName={selectedStock.name} 
-                              period="3mo"
+                            <Flex justify="space-between" align="center" mb={4}>
+                              <Heading size="sm">{(selectedStock as MarketStock)?.NAME || (selectedStock as PortfolioStock)?.name} Chart</Heading>
+                              <ButtonGroup size="xs" isAttached variant="outline">
+                                <Button onClick={() => setSelectedChartInterval('1D')} colorScheme={selectedChartInterval === '1D' ? 'blue' : undefined}>1D</Button>
+                                <Button onClick={() => setSelectedChartInterval('1W')} colorScheme={selectedChartInterval === '1W' ? 'blue' : undefined}>1W</Button>
+                                <Button onClick={() => setSelectedChartInterval('1M')} colorScheme={selectedChartInterval === '1M' ? 'blue' : undefined}>1M</Button>
+                                <Button onClick={() => setSelectedChartInterval('3M')} colorScheme={selectedChartInterval === '3M' ? 'blue' : undefined}>3M</Button>
+                                <Button onClick={() => setSelectedChartInterval('6M')} colorScheme={selectedChartInterval === '6M' ? 'blue' : undefined}>6M</Button>
+                                <Button onClick={() => setSelectedChartInterval('1Y')} colorScheme={selectedChartInterval === '1Y' ? 'blue' : undefined}>1Y</Button>
+                              </ButtonGroup>
+                            </Flex>
+                            <EnhancedStockChart 
+                              symbol={(selectedStock as MarketStock)?.SYMBOL ? `NSE:${(selectedStock as MarketStock).SYMBOL}` : (selectedStock as PortfolioStock)?.symbol}
+                              name={(selectedStock as MarketStock)?.NAME || (selectedStock as PortfolioStock)?.name}
+                              currentPrice={(selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0}
+                              previousClose={(selectedStock as MarketStock)?.PREV_CLOSE || (selectedStock as PortfolioStock)?.purchasePrice || 0}
+                              change={(selectedStock as MarketStock)?.CHANGE || ((selectedStock as PortfolioStock)?.currentPrice || 0) - ((selectedStock as PortfolioStock)?.purchasePrice || 0)}
+                              changePercent={(selectedStock as MarketStock)?.CHANGE_PERCENT || ((selectedStock as PortfolioStock)?.profitLossPercentage || 0)}
+                              timeInterval={selectedChartInterval}
                             />
                           </Box>
-                          
+                    
                           <Box p={4} className="glass-card">
                             <SimpleGrid columns={2} spacing={6} mb={6}>
                               <Stat>
                                 <StatLabel>Current Price</StatLabel>
-                                <StatNumber>₹{((selectedStock as StockData)?.price || (selectedStock as PortfolioStock)?.currentPrice || 0).toFixed(2)}</StatNumber>
+                                <StatNumber>₹{((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0).toFixed(2)}</StatNumber>
                                 <StatHelpText>
-                                  <StatArrow type={selectedStock?.change && selectedStock.change >= 0 ? 'increase' : 'decrease'} />
-                                  {Math.abs(selectedStock?.changePercentage || 0).toFixed(2)}%
+                                  <StatArrow type={(selectedStock as MarketStock)?.CHANGE && (selectedStock as MarketStock).CHANGE >= 0 ? 'increase' : 'decrease'} />
+                                  {Math.abs((selectedStock as MarketStock)?.CHANGE_PERCENT || 0).toFixed(2)}%
                                 </StatHelpText>
                               </Stat>
                               
                               <Stat>
                                 <StatLabel>Volume</StatLabel>
-                                <StatNumber>{(selectedStock as StockData)?.volume || 'N/A'}</StatNumber>
+                                <StatNumber>{(selectedStock as MarketStock)?.VOLUME || 'N/A'}</StatNumber>
                               </Stat>
                             </SimpleGrid>
                             
                             <Divider my={4} />
                             
-                            <SimpleGrid columns={2} spacing={6} mb={6}>
+                            <SimpleGrid columns={2} spacing={4}>
                               <Box>
-                                <Text fontWeight="medium" mb={2}>Market Cap</Text>
-                                <Text>{(selectedStock as StockData)?.marketCap || 'N/A'}</Text>
+                                <Text color="gray.400" mb={1}>Open</Text>
+                                <Text fontWeight="medium">₹{(selectedStock as MarketStock)?.OPEN?.toFixed(2) || 'N/A'}</Text>
                               </Box>
                               <Box>
-                                <Text fontWeight="medium" mb={2}>Sector</Text>
-                                <Badge
-                                  colorScheme={
-                                    selectedStock.sector === 'Technology' ? 'blue' :
-                                    selectedStock.sector === 'Healthcare' ? 'green' :
-                                    selectedStock.sector === 'Financial Services' ? 'purple' :
-                                    selectedStock.sector === 'Consumer Goods' ? 'orange' :
-                                    selectedStock.sector === 'Energy' ? 'red' :
-                                    selectedStock.sector === 'RealEstate' ? 'teal' :
-                                    selectedStock.sector === 'Utilities' ? 'cyan' :
-                                    selectedStock.sector === 'Industrials' ? 'gray' :
-                                    selectedStock.sector === 'Materials' ? 'yellow' :
+                                <Text color="gray.400" mb={1}>Previous Close</Text>
+                                <Text fontWeight="medium">₹{(selectedStock as MarketStock)?.PREV_CLOSE?.toFixed(2) || 'N/A'}</Text>
+                              </Box>
+                              <Box>
+                                <Text color="gray.400" mb={1}>Day's Low</Text>
+                                <Text fontWeight="medium">₹{(selectedStock as MarketStock)?.LOW?.toFixed(2) || 'N/A'}</Text>
+                              </Box>
+                              <Box>
+                                <Text color="gray.400" mb={1}>Day's High</Text>
+                                <Text fontWeight="medium">₹{(selectedStock as MarketStock)?.HIGH?.toFixed(2) || 'N/A'}</Text>
+                              </Box>
+                              <Box>
+                                <Text color="gray.400" mb={1}>Sector</Text>
+                                <Badge colorScheme={
+                                    (selectedStock as MarketStock)?.SECTOR === 'Technology' ? 'blue' :
+                                    (selectedStock as MarketStock)?.SECTOR === 'Healthcare' ? 'green' :
+                                    (selectedStock as MarketStock)?.SECTOR === 'Financial Services' ? 'purple' :
+                                    (selectedStock as MarketStock)?.SECTOR === 'Consumer Goods' ? 'orange' :
+                                    (selectedStock as MarketStock)?.SECTOR === 'Energy' ? 'red' :
+                                    (selectedStock as MarketStock)?.SECTOR === 'RealEstate' ? 'teal' :
+                                    (selectedStock as MarketStock)?.SECTOR === 'Utilities' ? 'cyan' :
+                                    (selectedStock as MarketStock)?.SECTOR === 'Industrials' ? 'gray' :
+                                    (selectedStock as MarketStock)?.SECTOR === 'Materials' ? 'yellow' :
                                     'pink' // For Telecommunications
                                   }
                                 >
-                                  {selectedStock.sector || 'N/A'}
+                                  {(selectedStock as MarketStock)?.SECTOR || 'N/A'}
                                 </Badge>
                               </Box>
                             </SimpleGrid>
                             
                             <Divider my={4} />
                             
-                            <Heading size="sm" mb={4}>Trade {(selectedStock as StockData)?.symbol || (selectedStock as PortfolioStock)?.id}</Heading>
+                            <Heading size="sm" mb={4}>Trade {(selectedStock as MarketStock)?.SYMBOL || (selectedStock as PortfolioStock)?.symbol}</Heading>
                             
                             <Flex direction="column" gap={4}>
                               <Flex>
@@ -1142,30 +1463,25 @@ const SimulatorPage: React.FC = () => {
                           </Box>
                         </Grid>
                       </Box>
-                    ) : filteredCsvStocks.length > 0 ? (
+                    ) : filteredStocks.length > 0 ? (
                       // Stock Table View
                       <Box overflowX="auto">
                         <Table variant="simple">
                           <Thead>
                             <Tr>
-                              <Th>Symbol</Th>
                               <Th>Name</Th>
-                              <Th>Sector</Th>
                               <Th isNumeric>Price</Th>
                               <Th isNumeric>Change</Th>
-                              <Th>Chart</Th>
                               <Th>Actions</Th>
-                            </Tr>
-                          </Thead>
-                          <Tbody>
-                            {filteredCsvStocks.map((stock) => {
-                              const stockData = mapCSVStockToStockData(stock);
-                              return (
-                                <Tr key={stock.SYMBOL}>
-                                  <Td>{stock.SYMBOL}</Td>
-                                  <Td>{stock['NAME OF COMPANY']}</Td>
-                                  <Td>
-                                    <Badge colorScheme={
+                        </Tr>
+                      </Thead>
+                      <Tbody>
+                            {filteredStocks.map((stock) => (
+                              <Tr key={stock.SYMBOL}>
+                                <Td>
+                                  <Flex align="center">
+                                    <Text fontWeight="medium">{stock.NAME}</Text>
+                                    <Badge ml={2} colorScheme={
                                       stock.SECTOR === 'Technology' ? 'blue' :
                                       stock.SECTOR === 'Healthcare' ? 'green' :
                                       stock.SECTOR === 'Financial Services' ? 'purple' :
@@ -1176,38 +1492,30 @@ const SimulatorPage: React.FC = () => {
                                       stock.SECTOR === 'Industrials' ? 'gray' :
                                       stock.SECTOR === 'Materials' ? 'yellow' :
                                       'pink' // For Telecommunications
-                                    }>
-                                      {stock.SECTOR}
+                                    } size="sm">
+                                      {stock.SYMBOL}
                                     </Badge>
-                                  </Td>
-                                  <Td isNumeric>₹{stockData.price.toFixed(2)}</Td>
-                                  <Td isNumeric>
-                                    <Text color={stockData.change >= 0 ? 'green.400' : 'red.400'}>
-                                      {stockData.change >= 0 ? '+' : ''}{stockData.change.toFixed(2)} ({stockData.change >= 0 ? '+' : ''}{stockData.changePercentage.toFixed(2)}%)
-                                    </Text>
-                                  </Td>
-                                  <Td width="120px">
-                                    <Box h="40px">
-                                      <MiniChart 
-                                        symbol={stock.SYMBOL} 
-                                        isPositive={stockData.change >= 0} 
-                                      />
-                                    </Box>
-                                  </Td>
-                                  <Td>
-                                    <Button
-                                      size="xs"
-                                      colorScheme="blue"
-                                      onClick={() => handleCSVStockSelection(stock)}
-                                    >
-                                      Trade
-                                    </Button>
-                                  </Td>
-                                </Tr>
-                              );
-                            })}
-                          </Tbody>
-                        </Table>
+                                  </Flex>
+                                </Td>
+                                <Td isNumeric>₹{stock.PRICE.toFixed(2)}</Td>
+                                <Td isNumeric>
+                                  <Text color={stock.CHANGE >= 0 ? 'green.400' : 'red.400'}>
+                                    {stock.CHANGE >= 0 ? '+' : ''}{stock.CHANGE.toFixed(2)} ({stock.CHANGE >= 0 ? '+' : ''}{stock.CHANGE_PERCENT.toFixed(2)}%)
+                                  </Text>
+                                </Td>
+                                <Td>
+                              <Button
+                                size="xs"
+                                colorScheme="teal"
+                                onClick={() => handleStockSelection(stock)}
+                              >
+                                Trade
+                              </Button>
+                            </Td>
+                          </Tr>
+                        ))}
+                      </Tbody>
+                    </Table>
                       </Box>
                     ) : (
                       // No stocks found
@@ -1215,7 +1523,7 @@ const SimulatorPage: React.FC = () => {
                         <Icon as={FiAlertCircle} boxSize={10} color="gray.500" mb={4} />
                         <Heading size="md" mb={2}>No Stocks Found</Heading>
                         <Text>We couldn't find any stocks matching your criteria. Please try adjusting your filters.</Text>
-                        <Button mt={4} onClick={refreshCSVData} leftIcon={<FiRefreshCw />}>
+                        <Button mt={4} onClick={() => setLoading(true)} leftIcon={<FiRefreshCw />}>
                           Refresh Data
                         </Button>
                       </Box>
@@ -1231,7 +1539,11 @@ const SimulatorPage: React.FC = () => {
                       <Flex direction="column" align="center">
                         <Box height="250px" width="250px" mb={6}>
                           {/* This would be a pie chart in a full implementation */}
-                          <StockChart />
+                          <StockChart 
+                            symbol="NSE:NIFTY50"
+                            companyName="Sector Allocation"
+                            period="1M"
+                          />
                         </Box>
                         
                         <VStack spacing={2} align="stretch" width="100%">
@@ -1307,7 +1619,7 @@ const SimulatorPage: React.FC = () => {
           <ModalContent bg="darkBlue.800" color="white" maxW="1000px">
             <ModalHeader>
               <Flex align="center">
-                <Text>{selectedStock?.name} ({(selectedStock as StockData)?.symbol || (selectedStock as PortfolioStock)?.id})</Text>
+                <Text>{(selectedStock as MarketStock)?.NAME || (selectedStock as PortfolioStock)?.name} ({(selectedStock as MarketStock)?.SYMBOL || (selectedStock as PortfolioStock)?.symbol})</Text>
               </Flex>
             </ModalHeader>
             <ModalCloseButton />
@@ -1317,56 +1629,70 @@ const SimulatorPage: React.FC = () => {
                 <Box>
                   <Text color="gray.400" mb={1}>Current Price</Text>
                   <Flex align="center">
-                    <Heading size="md">₹{((selectedStock as StockData)?.price || (selectedStock as PortfolioStock)?.currentPrice || 0).toFixed(2)}</Heading>
-                    <Badge ml={2} colorScheme={selectedStock?.change && selectedStock.change >= 0 ? 'green' : 'red'}>
-                      {selectedStock?.change && selectedStock.change >= 0 ? '+' : ''}{selectedStock?.changePercentage && Math.abs(selectedStock.changePercentage).toFixed(2)}%
+                    <Heading size="md">₹{((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0).toFixed(2)}</Heading>
+                    <Badge ml={2} colorScheme={(selectedStock as MarketStock)?.CHANGE && (selectedStock as MarketStock).CHANGE >= 0 ? 'green' : 'red'}>
+                      {(selectedStock as MarketStock)?.CHANGE && (selectedStock as MarketStock).CHANGE >= 0 ? '+' : ''}{Math.abs((selectedStock as MarketStock)?.CHANGE_PERCENT || 0).toFixed(2)}%
                     </Badge>
                   </Flex>
                   
-                  {(selectedStock as StockData)?.previousClose && (
+                  {(selectedStock as MarketStock)?.PREV_CLOSE && (
                     <Box mt={4}>
                       <Text color="gray.400" mb={1}>Previous Close</Text>
-                      <Heading size="md">₹{(selectedStock as StockData).previousClose.toFixed(2)}</Heading>
+                      <Heading size="md">₹{(selectedStock as MarketStock).PREV_CLOSE.toFixed(2)}</Heading>
                     </Box>
                   )}
                 </Box>
                 
-                <Box>
+                  <Box>
                   <Text color="gray.400" mb={2}>Market Information</Text>
                   <SimpleGrid columns={2} spacing={3}>
                     <Box>
                       <Text fontSize="xs" color="gray.500">Volume</Text>
-                      <Text fontSize="sm">{(selectedStock as StockData)?.volume || 'N/A'}</Text>
+                      <Text fontSize="sm">{(selectedStock as MarketStock)?.VOLUME || 'N/A'}</Text>
                     </Box>
                     <Box>
                       <Text fontSize="xs" color="gray.500">Market Cap</Text>
-                      <Text fontSize="sm">{(selectedStock as StockData)?.marketCap || 'N/A'}</Text>
+                      <Text fontSize="sm">{(selectedStock as MarketStock)?.MARKET_CAP || 'N/A'}</Text>
                     </Box>
                     <Box>
                       <Text fontSize="xs" color="gray.500">Day Range</Text>
-                      <Text fontSize="sm">
-                        {(selectedStock as StockData)?.dayLow && (selectedStock as StockData)?.dayHigh ? 
-                          `₹${(selectedStock as StockData).dayLow.toFixed(2)} - ₹${(selectedStock as StockData).dayHigh.toFixed(2)}` : 
+                    <Text fontSize="sm">
+                        {(selectedStock as MarketStock)?.LOW && (selectedStock as MarketStock)?.HIGH ? 
+                          `₹${(selectedStock as MarketStock).LOW.toFixed(2)} - ₹${(selectedStock as MarketStock).HIGH.toFixed(2)}` : 
                           'N/A'}
-                      </Text>
-                    </Box>
+                    </Text>
+                  </Box>
                     <Box>
                       <Text fontSize="xs" color="gray.500">52W Range</Text>
                       <Text fontSize="sm">
-                        {(selectedStock as StockData)?.yearLow && (selectedStock as StockData)?.yearHigh ? 
-                          `₹${(selectedStock as StockData).yearLow.toFixed(2)} - ₹${(selectedStock as StockData).yearHigh.toFixed(2)}` : 
-                          'N/A'}
+                        {/* 52W range is not part of the MarketStock interface */}
+                        N/A
                       </Text>
                     </Box>
-                  </SimpleGrid>
+              </SimpleGrid>
                 </Box>
               </Grid>
               
               <Box height="300px" mb={6}>
-                <StockChart 
-                  symbol={(selectedStock as StockData)?.symbol || (selectedStock as PortfolioStock)?.id}
-                  companyName={selectedStock?.name}
-                  period="1mo"
+                <Flex justify="space-between" align="center" mb={2}>
+                  <Heading size="sm">{(selectedStock as MarketStock)?.NAME || (selectedStock as PortfolioStock)?.name} Chart</Heading>
+                  <ButtonGroup size="xs" isAttached variant="outline">
+                    <Button onClick={() => setSelectedChartInterval('1D')} colorScheme={selectedChartInterval === '1D' ? 'blue' : undefined}>1D</Button>
+                    <Button onClick={() => setSelectedChartInterval('1W')} colorScheme={selectedChartInterval === '1W' ? 'blue' : undefined}>1W</Button>
+                    <Button onClick={() => setSelectedChartInterval('1M')} colorScheme={selectedChartInterval === '1M' ? 'blue' : undefined}>1M</Button>
+                    <Button onClick={() => setSelectedChartInterval('3M')} colorScheme={selectedChartInterval === '3M' ? 'blue' : undefined}>3M</Button>
+                    <Button onClick={() => setSelectedChartInterval('6M')} colorScheme={selectedChartInterval === '6M' ? 'blue' : undefined}>6M</Button>
+                    <Button onClick={() => setSelectedChartInterval('1Y')} colorScheme={selectedChartInterval === '1Y' ? 'blue' : undefined}>1Y</Button>
+                  </ButtonGroup>
+                </Flex>
+                <EnhancedStockChart 
+                  symbol={(selectedStock as MarketStock)?.SYMBOL ? `NSE:${(selectedStock as MarketStock).SYMBOL}` : (selectedStock as PortfolioStock)?.symbol}
+                  name={(selectedStock as MarketStock)?.NAME || (selectedStock as PortfolioStock)?.name}
+                  currentPrice={(selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0}
+                  previousClose={(selectedStock as MarketStock)?.PREV_CLOSE || (selectedStock as PortfolioStock)?.purchasePrice || 0}
+                  change={(selectedStock as MarketStock)?.CHANGE || ((selectedStock as PortfolioStock)?.currentPrice || 0) - ((selectedStock as PortfolioStock)?.purchasePrice || 0)}
+                  changePercent={(selectedStock as MarketStock)?.CHANGE_PERCENT || ((selectedStock as PortfolioStock)?.profitLossPercentage || 0)}
+                  timeInterval={selectedChartInterval}
                 />
               </Box>
               
@@ -1395,33 +1721,35 @@ const SimulatorPage: React.FC = () => {
                 </Button>
               </HStack>
               
-              <FormControl mb={4}>
-                <FormLabel>Amount to {transactionType === 'buy' ? 'Invest' : 'Sell'}</FormLabel>
-                <NumberInput 
-                  value={buyAmount}
-                  onChange={(valueString) => setBuyAmount(parseFloat(valueString))}
-                  min={100}
-                  max={mockPortfolio.cash}
-                >
-                  <NumberInputField />
-                </NumberInput>
-              </FormControl>
-              
-              <FormControl mb={4}>
-                <FormLabel>Order Type</FormLabel>
-                <Select defaultValue="market" bg="whiteAlpha.100">
-                  <option value="market">Market Order</option>
-                  <option value="limit">Limit Order</option>
-                  <option value="stop">Stop Order</option>
-                </Select>
-              </FormControl>
+              <Grid templateColumns="repeat(2, 1fr)" gap={4} mb={4}>
+                <FormControl>
+                  <FormLabel>Amount to {transactionType === 'buy' ? 'Invest' : 'Sell'}</FormLabel>
+                  <NumberInput 
+                    value={buyAmount}
+                    onChange={(valueString) => setBuyAmount(parseFloat(valueString))}
+                    min={100}
+                    max={portfolio.cash}
+                  >
+                    <NumberInputField />
+                  </NumberInput>
+                </FormControl>
+                
+                <FormControl>
+                  <FormLabel>Order Type</FormLabel>
+                  <Select defaultValue="market" bg="whiteAlpha.100">
+                    <option value="market">Market Order</option>
+                    <option value="limit">Limit Order</option>
+                    <option value="stop">Stop Order</option>
+                  </Select>
+                </FormControl>
+              </Grid>
               
               <Box p={4} bg="whiteAlpha.100" borderRadius="md" mb={4}>
                 <Flex justify="space-between" mb={2}>
                   <Text fontSize="sm">Estimated Shares</Text>
                   <Text fontSize="sm" fontWeight="bold">
-                    {selectedStock && (selectedStock.price || (selectedStock as PortfolioStock).currentPrice) 
-                      ? Math.floor(buyAmount / (selectedStock.price || (selectedStock as PortfolioStock).currentPrice || 1))
+                    {selectedStock && ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice) 
+                      ? Math.floor(buyAmount / ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 1))
                       : 0} shares
                   </Text>
                 </Flex>
@@ -1429,16 +1757,16 @@ const SimulatorPage: React.FC = () => {
                   <Text fontSize="sm">Share Price</Text>
                   <Text fontSize="sm">₹{
                     selectedStock 
-                      ? ((selectedStock.price || (selectedStock as PortfolioStock).currentPrice) || 0).toFixed(2)
+                      ? (((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice) || 0).toFixed(2)
                       : 'N/A'
                   }</Text>
                 </Flex>
                 <Flex justify="space-between" mb={2}>
                   <Text fontSize="sm">Estimated Cost</Text>
                   <Text fontSize="sm">₹{
-                    selectedStock && (selectedStock.price || (selectedStock as PortfolioStock).currentPrice)
-                      ? (Math.floor(buyAmount / (selectedStock.price || (selectedStock as PortfolioStock).currentPrice || 1)) 
-                         * (selectedStock.price || (selectedStock as PortfolioStock).currentPrice || 0)).toFixed(2)
+                    selectedStock && ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice)
+                      ? (Math.floor(buyAmount / ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 1)) 
+                         * ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0)).toFixed(2)
                       : '0.00'
                   }</Text>
                 </Flex>
@@ -1447,10 +1775,10 @@ const SimulatorPage: React.FC = () => {
                   <Text fontSize="sm" fontWeight="bold">Remaining Cash</Text>
                   <Text fontSize="sm" fontWeight="bold">
                     ₹{
-                      selectedStock && (selectedStock.price || (selectedStock as PortfolioStock).currentPrice)
-                        ? (mockPortfolio.cash - (Math.floor(buyAmount / (selectedStock.price || (selectedStock as PortfolioStock).currentPrice || 1)) 
-                           * (selectedStock.price || (selectedStock as PortfolioStock).currentPrice || 0))).toFixed(2)
-                        : mockPortfolio.cash.toFixed(2)
+                      selectedStock && ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice)
+                        ? (portfolio.cash - (Math.floor(buyAmount / ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 1)) 
+                           * ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0))).toFixed(2)
+                        : portfolio.cash.toFixed(2)
                     }
                   </Text>
                 </Flex>
@@ -1458,14 +1786,17 @@ const SimulatorPage: React.FC = () => {
             </ModalBody>
 
             <ModalFooter>
-              <Button mr={3} onClick={onClose} variant="ghost">
+              <Button mr={3} onClick={onClose} variant="outline" color="white">
                 Cancel
               </Button>
               <Button 
                 colorScheme={transactionType === 'buy' ? 'green' : 'red'} 
+                size="lg"
+                width="full"
+                mt={4}
                 onClick={handleTransaction}
               >
-                {transactionType === 'buy' ? 'Buy' : 'Sell'} {selectedStock.symbol}
+                {transactionType === 'buy' ? 'Buy' : 'Sell'} {(selectedStock as MarketStock)?.SYMBOL || (selectedStock as PortfolioStock)?.symbol}
               </Button>
             </ModalFooter>
           </ModalContent>

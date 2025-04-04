@@ -7,17 +7,24 @@ import requests
 import json
 import yfinance as yf
 import sys
-import os
+import secrets
 
 # Add parent directory to Python path to find the api module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from api.stock_data import register_stock_routes  # Now Python can find this module
+from upstox_service import register_upstox_routes
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app, supports_credentials=True)  # Enable CORS with credentials for session cookies
+
+# Configure secret key for sessions
+app.secret_key = secrets.token_hex(16)  # Generate random secret key
 
 # Register stock data routes
 register_stock_routes(app)
+
+# Register routes from upstox_service
+register_upstox_routes(app)
 
 # Add RapidAPI credentials as constants at the top of the file
 RAPIDAPI_KEY = "3eb4e1fb3bmsh51fce18992aaa0ep180473jsn735202c42635"
@@ -433,5 +440,9 @@ These options provide better risk-adjusted returns for your retirement goals whi
             'status': 'error'
         }), 500
 
+@app.route('/api/health')
+def health_check():
+    return jsonify({"status": "healthy"})
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000) 
+    app.run(debug=True, host='0.0.0.0', port=5000) 
