@@ -8,6 +8,64 @@ import Navigation from '../components/Navigation';
 
 const MotionBox = motion(Box);
 
+// Custom theme to improve form elements in dark mode
+const formTheme = {
+  components: {
+    Select: {
+      baseStyle: {
+        field: {
+          bg: "gray.700",
+          color: "white",
+          borderColor: "gray.600",
+          _hover: { borderColor: "blue.400" },
+          _focus: { borderColor: "blue.400" }
+        }
+      }
+    },
+    Radio: {
+      baseStyle: {
+        control: {
+          borderColor: "gray.500",
+          _checked: {
+            bg: "blue.500",
+            borderColor: "blue.500",
+          }
+        },
+        label: {
+          color: "white"
+        }
+      }
+    },
+    Checkbox: {
+      baseStyle: {
+        control: {
+          borderColor: "gray.500",
+          _checked: {
+            bg: "blue.500",
+            borderColor: "blue.500",
+          }
+        },
+        label: {
+          color: "white"
+        }
+      }
+    },
+    Button: {
+      variants: {
+        ghost: {
+          color: "gray.300",
+          _hover: { bg: "whiteAlpha.200", color: "white" }
+        },
+        outline: {
+          color: "white",
+          borderColor: "gray.600",
+          _hover: { bg: "whiteAlpha.200" }
+        }
+      }
+    }
+  }
+};
+
 const ProfilePage: React.FC = () => {
   const { currentUser, userProfile, updateUserProfile, isLoading } = useAuth();
   const [formStep, setFormStep] = useState(1);
@@ -358,6 +416,14 @@ const ProfilePage: React.FC = () => {
                     placeholder="Select your experience level"
                     value={profileData.investmentExperience}
                     onChange={(e) => handleChange('investmentExperience', e.target.value)}
+                    sx={{
+                      bg: "gray.700",
+                      color: "white",
+                      "& option": {
+                        background: "#2D3748", // gray.700
+                        color: "white"
+                      }
+                    }}
                   >
                     {experienceOptions.map(option => (
                       <option key={option.value} value={option.value}>
@@ -376,7 +442,7 @@ const ProfilePage: React.FC = () => {
                   >
                     <Stack spacing={4}>
                       {riskOptions.map(option => (
-                        <Radio key={option.value} value={option.value}>
+                        <Radio key={option.value} value={option.value} colorScheme="blue" style={{ color: "white" }}>
                           {option.label}
                         </Radio>
                       ))}
@@ -391,6 +457,9 @@ const ProfilePage: React.FC = () => {
                       variant="outline"
                       onClick={() => setFormStep(prev => prev - 1)}
                       leftIcon={<FiArrowLeft />}
+                      bg="white"
+                      color="gray.800"
+                      borderColor="gray.300"
                     >
                       Back
                     </Button>
@@ -402,6 +471,9 @@ const ProfilePage: React.FC = () => {
                         variant="ghost"
                         onClick={handleSkip}
                         size="md"
+                        bg="white"
+                        color="gray.800"
+                        borderColor="gray.300"
                       >
                         Skip for now
                       </Button>
@@ -412,6 +484,8 @@ const ProfilePage: React.FC = () => {
                       onClick={handleNextStep}
                       rightIcon={<FiArrowRight />}
                       isLoading={isSubmitting}
+                      bg="blue.500"
+                      color="white"
                     >
                       Next
                     </Button>
@@ -436,7 +510,7 @@ const ProfilePage: React.FC = () => {
                   >
                     <VStack align="start" spacing={3}>
                       {goalOptions.map(option => (
-                        <Checkbox key={option.value} value={option.value}>
+                        <Checkbox key={option.value} value={option.value} colorScheme="blue" style={{ color: "white" }}>
                           {option.label}
                         </Checkbox>
                       ))}
@@ -453,7 +527,7 @@ const ProfilePage: React.FC = () => {
                   >
                     <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
                       {sectorOptions.map(option => (
-                        <Checkbox key={option.value} value={option.value}>
+                        <Checkbox key={option.value} value={option.value} colorScheme="blue" style={{ color: "white" }}>
                           {option.label}
                         </Checkbox>
                       ))}
@@ -468,6 +542,9 @@ const ProfilePage: React.FC = () => {
                       variant="outline"
                       onClick={() => setFormStep(prev => prev - 1)}
                       leftIcon={<FiArrowLeft />}
+                      bg="white"
+                      color="gray.800"
+                      borderColor="gray.300"
                     >
                       Back
                     </Button>
@@ -479,6 +556,9 @@ const ProfilePage: React.FC = () => {
                         variant="ghost"
                         onClick={handleSkip}
                         size="md"
+                        bg="white"
+                        color="gray.800"
+                        borderColor="gray.300"
                       >
                         Skip for now
                       </Button>
@@ -489,6 +569,8 @@ const ProfilePage: React.FC = () => {
                       onClick={handleNextStep}
                       rightIcon={<FiArrowRight />}
                       isLoading={isSubmitting}
+                      bg="blue.500"
+                      color="white"
                     >
                       Next
                     </Button>
@@ -511,6 +593,14 @@ const ProfilePage: React.FC = () => {
                     placeholder="Select investment amount"
                     value={profileData.investmentAmount}
                     onChange={(e) => handleChange('investmentAmount', e.target.value)}
+                    sx={{
+                      bg: "gray.700",
+                      color: "white",
+                      "& option": {
+                        background: "#2D3748", // gray.700
+                        color: "white"
+                      }
+                    }}
                   >
                     {amountOptions.map(option => (
                       <option key={option.value} value={option.value}>
@@ -529,7 +619,7 @@ const ProfilePage: React.FC = () => {
                   >
                     <Stack spacing={4}>
                       {timeframeOptions.map(option => (
-                        <Radio key={option.value} value={option.value}>
+                        <Radio key={option.value} value={option.value} colorScheme="blue" style={{ color: "white" }}>
                           {option.label}
                         </Radio>
                       ))}
@@ -544,6 +634,9 @@ const ProfilePage: React.FC = () => {
                       variant="outline"
                       onClick={() => setFormStep(prev => prev - 1)}
                       leftIcon={<FiArrowLeft />}
+                      bg="white"
+                      color="gray.800"
+                      borderColor="gray.300"
                     >
                       Back
                     </Button>
@@ -555,6 +648,9 @@ const ProfilePage: React.FC = () => {
                         variant="ghost"
                         onClick={handleSkip}
                         size="md"
+                        bg="white"
+                        color="gray.800"
+                        borderColor="gray.300"
                       >
                         Skip for now
                       </Button>
@@ -565,6 +661,8 @@ const ProfilePage: React.FC = () => {
                       onClick={handleFormSubmit}
                       rightIcon={<FiCheck />}
                       isLoading={isSubmitting}
+                      bg="blue.500"
+                      color="white"
                     >
                       {userProfile?.isProfileComplete ? "Update Profile" : "Complete Setup"}
                     </Button>
@@ -639,6 +737,9 @@ const ProfilePage: React.FC = () => {
                     colorScheme="blue" 
                     onClick={() => setFormStep(2)}
                     variant="outline"
+                    bg="white"
+                    color="gray.800"
+                    borderColor="gray.300"
                   >
                     Edit Profile
                   </Button>

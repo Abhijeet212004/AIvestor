@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import HomePage from './pages/HomePage';
 import SimulatorPage from './pages/SimulatorPage';
 import UpstoxCallback from './pages/UpstoxCallback';
+import AuthPage from './pages/AuthPage'; // Added import statement for AuthPage
 import { AuthProvider } from './contexts/AuthContext';
 import './App.css';
 import DiscoveryPage from './pages/DiscoveryPage';
@@ -11,6 +12,7 @@ import EducationPage from './pages/EducationPage';
 import CommunityPage from './pages/CommunityPage';
 import ProfilePage from './pages/ProfilePage';
 import ChatPage from './pages/ChatPage';
+import NewsPage from './pages/NewsPage';
 // Create a custom theme with dark mode as default
 const theme = extendTheme({
   initialColorMode: 'dark',
@@ -46,6 +48,7 @@ function App() {
         <AuthProvider>
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/auth" element={<AuthPage />} />
             <Route path="/simulator" element={<SimulatorPage />} />
             <Route path="/upstox/callback" element={<UpstoxCallback />} />
             <Route path="/discovery" element={<DiscoveryPage />} />
@@ -53,6 +56,7 @@ function App() {
             <Route path="/community" element={<CommunityPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/chat" element={<ChatPage />} />
+            <Route path="/news" element={<NewsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>

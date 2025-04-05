@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Box, Flex, Text, Button, Image, HStack, useDisclosure, IconButton, Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton, VStack, Avatar, Menu, MenuButton, MenuList, MenuItem, MenuDivider, AvatarBadge } from '@chakra-ui/react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiMenu, FiHome, FiMessageCircle, FiCompass, FiBookOpen, FiTrendingUp, FiUsers, FiLogOut, FiUser, FiSettings, FiChevronDown } from 'react-icons/fi';
+import { FiMenu, FiHome, FiMessageCircle, FiCompass, FiBookOpen, FiTrendingUp, FiUsers, FiLogOut, FiUser, FiSettings, FiChevronDown, FiFileText } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 
 const MotionBox = motion(Box);
@@ -33,6 +33,7 @@ const Navigation: React.FC = () => {
     { name: 'Discovery', path: '/discovery', icon: <FiCompass /> },
     { name: 'Education', path: '/education', icon: <FiBookOpen /> },
     { name: 'Simulator', path: '/simulator', icon: <FiTrendingUp /> },
+    { name: 'News', path: '/news', icon: <FiFileText /> },
     { name: 'Community', path: '/community', icon: <FiUsers /> },
   ];
 

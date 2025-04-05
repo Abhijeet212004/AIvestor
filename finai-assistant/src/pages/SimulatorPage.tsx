@@ -66,6 +66,7 @@ import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiPieChart, FiActivity, FiC
 import Navigation from '../components/Navigation';
 import StockChart from '../components/StockChart';
 import EnhancedStockChart from '../components/EnhancedStockChart';
+import PortfolioChart from '../components/PortfolioChart'; 
 import AnimatedCard from '../components/AnimatedCard';
 import ProtectedFeature from '../components/ProtectedFeature';
 import { fetchStockHistory, simulateStockData } from '../services/stockDataService';
@@ -304,7 +305,7 @@ const SimulatorPage: React.FC = () => {
   const [transactionType, setTransactionType] = useState<'buy' | 'sell'>('buy');
   const [marketStocks, setMarketStocks] = useState<MarketStock[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [showStockDetail, setShowStockDetail] = useState(false);
   const [csvStocks, setCsvStocks] = useState<PortfolioStock[]>([]);
@@ -646,7 +647,7 @@ const SimulatorPage: React.FC = () => {
   const handleTransaction = () => {
     if (transactionType === 'buy') {
       if (!selectedStock || !buyAmount) return;
-  
+
       const stockPrice = (selectedStock as MarketStock).PRICE || (selectedStock as PortfolioStock).currentPrice;
       const shares = Math.floor(buyAmount / stockPrice);
       const transactionAmount = shares * stockPrice;
@@ -658,47 +659,18 @@ const SimulatorPage: React.FC = () => {
       
       setPortfolio(prev => {
         const newCash = prev.cash - transactionAmount;
-        const existingAsset = prev.assets.find(a => a.symbol === (selectedStock as MarketStock).SYMBOL);
         
-        if (existingAsset) {
-          const newShares = existingAsset.shares + shares;
-          const newAveragePurchasePrice = 
-            (existingAsset.purchasePrice * existingAsset.shares + stockPrice * shares) / newShares;
-          
-          return {
-            ...prev,
-            cash: newCash,
-            assets: prev.assets.map(a =>
-              a.symbol === (selectedStock as MarketStock).SYMBOL
-                ? {
-                    ...a,
-                    shares: newShares,
-                    purchasePrice: newAveragePurchasePrice,
-                    currentPrice: stockPrice,
-                    totalValue: newShares * stockPrice,
-                    profitLoss: (stockPrice - newAveragePurchasePrice) * newShares,
-                    profitLossPercentage: ((stockPrice - newAveragePurchasePrice) / newAveragePurchasePrice) * 100,
-                    lastUpdated: new Date().toISOString()
-                  }
-                : a
-            ),
-            transactions: [
-              ...prev.transactions,
-              {
-                date: new Date(),
-                ticker: (selectedStock as MarketStock).SYMBOL,
-                type: 'buy',
-                shares,
-                price: stockPrice,
-                total: transactionAmount
-              }
-            ]
-          };
-        } else {
+        // Check if we already have this stock
+        const existingAssetIndex = prev.assets.findIndex(
+          asset => asset.symbol === ((selectedStock as MarketStock).SYMBOL || (selectedStock as PortfolioStock).symbol)
+        );
+        
+        if (existingAssetIndex === -1) {
+          // Add as a new asset
           const newAsset: PortfolioStock = {
-            symbol: (selectedStock as MarketStock).SYMBOL,
-            name: (selectedStock as MarketStock).NAME,
-            shares,
+            symbol: (selectedStock as MarketStock).SYMBOL || (selectedStock as PortfolioStock).symbol,
+            name: (selectedStock as MarketStock).NAME || (selectedStock as PortfolioStock).name,
+            shares: shares,
             purchasePrice: stockPrice,
             currentPrice: stockPrice,
             totalValue: shares * stockPrice,
@@ -706,9 +678,9 @@ const SimulatorPage: React.FC = () => {
             profitLossPercentage: 0,
             purchaseDate: new Date().toISOString(),
             lastUpdated: new Date().toISOString(),
-            weight: (transactionAmount / (transactionAmount + newCash)) * 100,
-            sector: (selectedStock as MarketStock).SECTOR,
+            sector: (selectedStock as MarketStock).SECTOR || (selectedStock as PortfolioStock).sector || 'Unknown',
             transactions: [],
+            weight: (shares * stockPrice) / (prev.cash + prev.assets.reduce((acc, curr) => acc + curr.totalValue, 0)) * 100
           };
           
           return {
@@ -719,46 +691,8 @@ const SimulatorPage: React.FC = () => {
               ...prev.transactions,
               {
                 date: new Date(),
-                ticker: (selectedStock as MarketStock).SYMBOL,
+                ticker: newAsset.symbol,
                 type: 'buy',
-                shares,
-                price: stockPrice,
-                total: transactionAmount
-              }
-            ]
-          };
-        }
-      });
-    } else {
-      // For sell transactions
-      if (!selectedStock) return;
-      
-      const stockPrice = (selectedStock as MarketStock).PRICE || (selectedStock as PortfolioStock).currentPrice;
-      // Use buyAmount as the number of shares to sell
-      const shares = Math.floor(buyAmount || 0);
-      const transactionAmount = shares * stockPrice;
-      
-      const existingAsset = portfolio.assets.find(a => a.symbol === (selectedStock as MarketStock).SYMBOL);
-      if (!existingAsset || existingAsset.shares < shares) {
-        alert('Insufficient shares');
-        return;
-      }
-      
-      setPortfolio(prev => {
-        const newCash = prev.cash + transactionAmount;
-        const newShares = existingAsset.shares - shares;
-        
-        if (newShares === 0) {
-          return {
-            ...prev,
-            cash: newCash,
-            assets: prev.assets.filter(a => a.symbol !== (selectedStock as MarketStock).SYMBOL),
-            transactions: [
-              ...prev.transactions,
-              {
-                date: new Date(),
-                ticker: (selectedStock as MarketStock).SYMBOL,
-                type: 'sell',
                 shares: shares,
                 price: stockPrice,
                 total: transactionAmount
@@ -766,11 +700,106 @@ const SimulatorPage: React.FC = () => {
             ]
           };
         } else {
+          // Update existing asset
+          const existingAsset = prev.assets[existingAssetIndex];
+          const newShares = existingAsset.shares + shares;
+          // Calculate new average purchase price
+          const newPurchasePrice = 
+            ((existingAsset.purchasePrice * existingAsset.shares) + (stockPrice * shares)) / newShares;
+          
+          const updatedAssets = [...prev.assets];
+          updatedAssets[existingAssetIndex] = {
+            ...existingAsset,
+            shares: newShares,
+            purchasePrice: newPurchasePrice,
+            currentPrice: stockPrice,
+            totalValue: newShares * stockPrice,
+            profitLoss: stockPrice - newPurchasePrice,
+            profitLossPercentage: ((stockPrice - newPurchasePrice) / newPurchasePrice) * 100,
+            lastUpdated: new Date().toISOString()
+          };
+          
           return {
             ...prev,
             cash: newCash,
-            assets: prev.assets.map(a =>
-              a.symbol === (selectedStock as MarketStock).SYMBOL
+            assets: updatedAssets,
+            transactions: [
+              ...prev.transactions,
+              {
+                date: new Date(),
+                ticker: existingAsset.symbol,
+                type: 'buy',
+                shares: shares,
+                price: stockPrice,
+                total: transactionAmount
+              }
+            ]
+          };
+        }
+      });
+      
+      onClose();
+    } else if (transactionType === 'sell') {
+      if (!selectedStock) return;
+      
+      const stockSymbol = (selectedStock as MarketStock).SYMBOL || (selectedStock as PortfolioStock).symbol;
+      const stockPrice = (selectedStock as MarketStock).PRICE || (selectedStock as PortfolioStock).currentPrice;
+      
+      // Find the asset in the portfolio
+      const assetIndex = portfolio.assets.findIndex(a => a.symbol === stockSymbol);
+      
+      if (assetIndex === -1) {
+        alert(`You don't own any shares of ${stockSymbol}`);
+        return;
+      }
+      
+      const asset = portfolio.assets[assetIndex];
+      
+      // For sell transactions, we'll use the buyAmount as the number of shares to sell directly
+      // instead of calculating it from the total amount
+      let sharesToSell = Math.floor(buyAmount);
+      
+      // Make sure they're not trying to sell more than they own
+      if (sharesToSell > asset.shares) {
+        sharesToSell = asset.shares; // Automatically adjust to sell all available shares
+      }
+      
+      if (sharesToSell <= 0) {
+        alert('Please enter a valid number of shares to sell');
+        return;
+      }
+      
+      const transactionAmount = sharesToSell * stockPrice;
+      
+      setPortfolio(prev => {
+        const newCash = prev.cash + transactionAmount;
+        const newShares = asset.shares - sharesToSell;
+        
+        // Only remove the asset from the portfolio if all shares are sold (zero shares left)
+        if (newShares === 0) {
+          return {
+            ...prev,
+            cash: newCash,
+            assets: prev.assets.filter(a => a.symbol !== stockSymbol),
+            transactions: [
+              ...prev.transactions,
+              {
+                date: new Date(),
+                ticker: stockSymbol,
+                type: 'sell',
+                shares: sharesToSell,
+                price: stockPrice,
+                total: transactionAmount
+              }
+            ]
+          };
+        } else {
+          // Otherwise, update the asset with the new share count
+          return {
+            ...prev,
+            cash: newCash,
+            assets: prev.assets.map(a => 
+              a.symbol === stockSymbol
                 ? {
                     ...a,
                     shares: newShares,
@@ -783,9 +812,9 @@ const SimulatorPage: React.FC = () => {
               ...prev.transactions,
               {
                 date: new Date(),
-                ticker: (selectedStock as MarketStock).SYMBOL,
+                ticker: stockSymbol,
                 type: 'sell',
-                shares: shares,
+                shares: sharesToSell,
                 price: stockPrice,
                 total: transactionAmount
               }
@@ -793,9 +822,9 @@ const SimulatorPage: React.FC = () => {
           };
         }
       });
+      
+      onClose();
     }
-    
-    onClose();
   };
 
   const allocations = [
@@ -892,6 +921,82 @@ const SimulatorPage: React.FC = () => {
   const calculatePortfolioReturn = () => {
     const totalValue = calculatePortfolioValue();
     return ((totalValue - portfolio.initialInvestment) / portfolio.initialInvestment) * 100;
+  };
+
+  // Handle search input change with debounce
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Handle market search input - with dynamic API search
+  const handleMarketSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    
+    // Clear previous timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    // Debounce the search to avoid too many API calls
+    const timeout = setTimeout(async () => {
+      if (value.trim().length > 0) {
+        setIsSearching(true);
+        try {
+          // Use the new searchStock function to search in preloaded stocks and API
+          const results = await upstoxService.searchStock(value, marketStocks);
+          
+          // If we got new stocks not in our current list, add them
+          if (results.length > 0) {
+            const newStocks = results.filter(result => {
+              // Check if this stock is already in our marketStocks
+              const symbol = result.symbol || result.SYMBOL;
+              return !marketStocks.some(stock => stock.SYMBOL === symbol);
+            });
+            
+            // If we found new stocks, add them to the marketStocks array
+            if (newStocks.length > 0) {
+              console.log('Adding new stocks from search:', newStocks);
+              
+              // Convert any results to MarketStock format if needed
+              const formattedNewStocks = newStocks.map(stock => {
+                // If it's already in MarketStock format, return as is
+                if (stock.SYMBOL) {
+                  return stock;
+                }
+                
+                // Otherwise convert it
+                return {
+                  SYMBOL: stock.symbol,
+                  NAME: stock.name,
+                  PRICE: 0, // We'll need to fetch this
+                  CHANGE: 0,
+                  CHANGE_PERCENT: 0,
+                  VOLUME: '0',
+                  MARKET_CAP: '0',
+                  PREV_CLOSE: 0,
+                  OPEN: 0,
+                  HIGH: 0,
+                  LOW: 0,
+                  CLOSE: 0,
+                  SECTOR: stock.sector || '',
+                  timestamp: new Date(),
+                  lastUpdated: new Date().toISOString()
+                };
+              });
+              
+              // Add the new stocks to our list
+              setMarketStocks(prevStocks => [...prevStocks, ...formattedNewStocks]);
+            }
+          }
+        } catch (error) {
+          console.error('Error searching for stocks:', error);
+        } finally {
+          setIsSearching(false);
+        }
+      }
+    }, 500); // 500ms debounce
+    
+    setSearchTimeout(timeout);
   };
 
   return (
@@ -1084,14 +1189,15 @@ const SimulatorPage: React.FC = () => {
                   <Flex direction="column" h="100%">
                     <Heading size="md" mb={4}>Portfolio Performance</Heading>
                     <Box flex="1" minH="200px">
-                      <EnhancedStockChart 
-                        symbol="NSE:NIFTY50"
-                        name="Your Portfolio"
-                        currentPrice={calculatePortfolioValue()}
-                        previousClose={portfolio.initialInvestment}
-                        change={calculatePortfolioValue() - portfolio.initialInvestment}
-                        changePercent={calculatePortfolioReturn()}
-                        onRefresh={() => refreshCSVData()}
+                      <PortfolioChart 
+                        portfolio={portfolio}
+                        timeInterval={selectedChartInterval}
+                        isLoading={loading}
+                        onRefresh={() => {
+                          // Refresh the portfolio chart data
+                          const newDate = new Date();
+                          setLastUpdated(newDate);
+                        }}
                       />
                     </Box>
                     <HStack spacing={6} mt={6} justify="center">
@@ -1164,7 +1270,15 @@ const SimulatorPage: React.FC = () => {
                         {portfolio.assets.map((asset) => (
                           <Tr key={asset.symbol} _hover={{ bg: "whiteAlpha.100" }}>
                             <Td fontWeight="bold">{asset.symbol}</Td>
-                            <Td>{asset.name}</Td>
+                            <Td>
+                              <Text 
+                                cursor="pointer" 
+                                _hover={{ textDecoration: "underline", color: "blue.300" }}
+                                onClick={() => handlePortfolioAssetSelection(asset)}
+                              >
+                                {asset.name}
+                              </Text>
+                            </Td>
                             <Td isNumeric>{asset.shares}</Td>
                             <Td isNumeric>₹{asset.purchasePrice?.toFixed(2) || 'N/A'}</Td>
                             <Td isNumeric>
@@ -1193,7 +1307,8 @@ const SimulatorPage: React.FC = () => {
                             <Td>
                               <Button 
                                 size="xs" 
-                                variant="ghost" 
+                                colorScheme="blue" 
+                                variant="solid" 
                                 onClick={() => handlePortfolioAssetSelection(asset)}
                               >
                                 Trade
@@ -1232,8 +1347,8 @@ const SimulatorPage: React.FC = () => {
                       </Flex>
                     </Box>
                     
-                    <Table variant="simple" size="sm">
-                      <Thead bg="whiteAlpha.100">
+                    <Table variant="simple">
+                      <Thead>
                         <Tr>
                           <Th>Date</Th>
                           <Th>Type</Th>
@@ -1278,40 +1393,19 @@ const SimulatorPage: React.FC = () => {
                     <Flex justify="space-between" align="center" mb={6}>
                       <Heading size="md">Market Stocks</Heading>
                       <Flex align="center">
-                        <InputGroup size="sm" maxW="200px" mr={4}>
+                        <InputGroup size="sm" maxW="300px">
                           <InputLeftElement pointerEvents="none">
                               <Icon as={FiSearch} color="gray.400" />
                             </InputLeftElement>
                             <Input 
                             placeholder="Search stocks..." 
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={handleMarketSearchChange}
                             />
                           </InputGroup>
-                        <Select 
-                          size="sm" 
-                          maxW="150px" 
-                          mr={4} 
-                          placeholder="All Sectors"
-                          value={selectedSector || ""}
-                          onChange={(e) => setSelectedSector(e.target.value || null)}
-                        >
-                          <option value="">All Sectors</option>
-                          {sectors.map((sector) => (
-                            <option key={sector} value={sector}>{sector}</option>
-                          ))}
-                        </Select>
-                        <Button
-                          size="sm"
-                          leftIcon={<Icon as={FiRefreshCw} />}
-                          isLoading={isLoadingCSV}
-                          onClick={refreshCSVData}
-                        >
-                          Refresh
-                        </Button>
                       </Flex>
-                      </Flex>
-                      
+                    </Flex>
+                    
                     <Flex justify="space-between" align="center" mb={4}>
                       <Text fontSize="sm" color="gray.400">
                         {isUpstoxAuthenticated 
@@ -1418,7 +1512,7 @@ const SimulatorPage: React.FC = () => {
                             
                             <Flex direction="column" gap={4}>
                               <Flex>
-                                <Button
+                                <Button 
                                   flex={1} 
                                   colorScheme="green"
                                   mr={2}

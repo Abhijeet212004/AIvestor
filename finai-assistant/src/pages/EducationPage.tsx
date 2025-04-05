@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { Box, Container, Heading, Text, Flex, Button, Grid, GridItem, VStack, HStack, Icon, Progress, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton, useDisclosure, Tag, Radio, RadioGroup, Stack } from '@chakra-ui/react';
+import React, { useState, useEffect } from 'react';
+import { Box, Container, Heading, Text, Flex, Button, Grid, GridItem, VStack, HStack, Icon, Progress, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton, useDisclosure, Tag, Radio, RadioGroup, Stack, Image, SimpleGrid, Spinner, Link, InputGroup, InputLeftElement, Input, Select } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
-import { FiAward, FiBookOpen, FiCheck, FiCheckCircle, FiClock, FiDollarSign, FiLayers, FiPercent, FiPieChart, FiTrendingUp, FiX } from 'react-icons/fi';
+import { FiAward, FiBookOpen, FiCheck, FiCheckCircle, FiClock, FiDollarSign, FiExternalLink, FiLayers, FiPercent, FiPieChart, FiPlay, FiSearch, FiTrendingUp, FiVideo, FiX } from 'react-icons/fi';
 import Navigation from '../components/Navigation';
 import AnimatedCard from '../components/AnimatedCard';
 import ProtectedFeature from '../components/ProtectedFeature';
+import { getPersonalizedRecommendations, Video } from '../services/youtubeServices';
 
 const MotionBox = motion(Box);
 
@@ -14,6 +15,9 @@ const EducationPage: React.FC = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({});
   const [quizResults, setQuizResults] = useState<{score: number, total: number} | null>(null);
+  const [recommendedVideos, setRecommendedVideos] = useState<Video[]>([]);
+  const [isLoadingVideos, setIsLoadingVideos] = useState(false);
+  const [userLevel, setUserLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced'>('Beginner');
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   // Mock courses data
@@ -185,6 +189,22 @@ const EducationPage: React.FC = () => {
       total: selectedCourse.quiz.length
     });
   };
+
+  useEffect(() => {
+    const fetchRecommendedVideos = async () => {
+      try {
+        setIsLoadingVideos(true);
+        const recommendations = await getPersonalizedRecommendations(userLevel);
+        setRecommendedVideos(recommendations);
+      } catch (error) {
+        console.error("Error fetching video recommendations:", error);
+      } finally {
+        setIsLoadingVideos(false);
+      }
+    };
+    
+    fetchRecommendedVideos();
+  }, [userLevel]);
 
   // Header gradient for education page
   const educationGradient = "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)";
@@ -387,6 +407,125 @@ const EducationPage: React.FC = () => {
               </Grid>
             </AnimatedCard>
           </ProtectedFeature>
+
+          {/* User Level Selection */}
+          <Box mb={8}>
+            <Heading size="md" mb={4}>Your Investment Experience Level</Heading>
+            <HStack spacing={4}>
+              {['Beginner', 'Intermediate', 'Advanced'].map((level) => (
+                <Button 
+                  key={level}
+                  colorScheme={userLevel === level ? 'blue' : 'gray'}
+                  onClick={() => setUserLevel(level as 'Beginner' | 'Intermediate' | 'Advanced')}
+                  leftIcon={<Icon as={FiBookOpen} />}
+                >
+                  {level}
+                </Button>
+              ))}
+            </HStack>
+          </Box>
+
+          {/* Recommended Videos Section with Search */}
+          <Flex justify="space-between" align="center" mb={6}>
+            <Heading size="lg">Recommended Videos for {userLevel} Investors</Heading>
+            <HStack spacing={4}>
+              <Box w="300px">
+                <InputGroup>
+                  <InputLeftElement pointerEvents="none">
+                    <Icon as={FiSearch} color="gray.400" />
+                  </InputLeftElement>
+                  <Input 
+                    placeholder="Search for specific topics..."
+                    borderColor="whiteAlpha.300"
+                    _hover={{ borderColor: "whiteAlpha.400" }}
+                    onChange={(e) => {
+                      const searchTerm = e.target.value.trim();
+                      // If search is empty, just use the user level
+                      if (!searchTerm) {
+                        const fetchRecommendations = async () => {
+                          setIsLoadingVideos(true);
+                          const recommendations = await getPersonalizedRecommendations(userLevel);
+                          setRecommendedVideos(recommendations);
+                          setIsLoadingVideos(false);
+                        };
+                        fetchRecommendations();
+                        return;
+                      }
+                      
+                      // Debounce the search to avoid too many API calls
+                      const debounceTimer = setTimeout(async () => {
+                        setIsLoadingVideos(true);
+                        try {
+                          const recommendations = await getPersonalizedRecommendations(userLevel, [searchTerm]);
+                          setRecommendedVideos(recommendations);
+                        } catch (error) {
+                          console.error("Error searching videos:", error);
+                        } finally {
+                          setIsLoadingVideos(false);
+                        }
+                      }, 500);
+                      
+                      return () => clearTimeout(debounceTimer);
+                    }}
+                  />
+                </InputGroup>
+              </Box>
+              <Select 
+                width="180px" 
+                borderColor="whiteAlpha.300"
+                _hover={{ borderColor: "whiteAlpha.400" }}
+                defaultValue="relevance"
+                onChange={(e) => {
+                  // Sort the videos based on selection
+                  const sortType = e.target.value;
+                  const sortedVideos = [...recommendedVideos].sort((a, b) => {
+                    if (sortType === 'relevance') {
+                      return b.levelRelevance - a.levelRelevance;
+                    } else if (sortType === 'date') {
+                      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+                    }
+                    return 0;
+                  });
+                  setRecommendedVideos(sortedVideos);
+                }}
+              >
+                <option value="relevance">Sort by Relevance</option>
+                <option value="date">Sort by Date</option>
+              </Select>
+            </HStack>
+          </Flex>
+          
+          {isLoadingVideos ? (
+            <Flex justify="center" align="center" h="200px">
+              <Spinner size="xl" color="blue.400" />
+              <Text ml={4} fontSize="lg">Loading personalized recommendations...</Text>
+            </Flex>
+          ) : recommendedVideos.length > 0 ? (
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6} mb={10}>
+              {recommendedVideos.map((video, index) => (
+                <Link key={index} href={video.url} isExternal _hover={{ textDecoration: 'none' }}>
+                  <AnimatedCard p={0} overflow="hidden" cursor="pointer" hoverEffect="lift">
+                    <Image src={video.thumbnail} w="full" h="150px" objectFit="cover" borderTopRadius="md" />
+                    <Box p={4}>
+                      <Heading size="sm" mb={2} noOfLines={2}>{video.title}</Heading>
+                      <Text fontSize="sm" color="gray.300" noOfLines={2}>{video.description}</Text>
+                      <HStack mt={3}>
+                        <Icon as={FiPlay} color="blue.400" />
+                        <Text fontSize="xs" color="blue.400">Watch Video</Text>
+                        <Icon as={FiExternalLink} color="blue.400" ml="auto" />
+                      </HStack>
+                    </Box>
+                  </AnimatedCard>
+                </Link>
+              ))}
+            </SimpleGrid>
+          ) : (
+            <Box textAlign="center" p={6} bg="gray.800" borderRadius="md" mb={10}>
+              <Icon as={FiVideo} boxSize={10} color="gray.500" mb={4} />
+              <Heading size="md" mb={2}>No recommended videos found</Heading>
+              <Text>Try changing your experience level or check back later</Text>
+            </Box>
+          )}
 
           {/* Courses Section */}
           <Heading size="lg" mb={6}>Learning Modules</Heading>
