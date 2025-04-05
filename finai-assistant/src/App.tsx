@@ -6,7 +6,11 @@ import SimulatorPage from './pages/SimulatorPage';
 import UpstoxCallback from './pages/UpstoxCallback';
 import { AuthProvider } from './contexts/AuthContext';
 import './App.css';
-
+import DiscoveryPage from './pages/DiscoveryPage';
+import EducationPage from './pages/EducationPage';
+import CommunityPage from './pages/CommunityPage';
+import ProfilePage from './pages/ProfilePage';
+import ChatPage from './pages/ChatPage';
 // Create a custom theme with dark mode as default
 const theme = extendTheme({
   initialColorMode: 'dark',
@@ -44,6 +48,11 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/simulator" element={<SimulatorPage />} />
             <Route path="/upstox/callback" element={<UpstoxCallback />} />
+            <Route path="/discovery" element={<DiscoveryPage />} />
+            <Route path="/education" element={<EducationPage />} />
+            <Route path="/community" element={<CommunityPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/chat" element={<ChatPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>

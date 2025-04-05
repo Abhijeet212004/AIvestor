@@ -1409,24 +1409,7 @@ const SimulatorPage: React.FC = () => {
                                 <Text color="gray.400" mb={1}>Day's High</Text>
                                 <Text fontWeight="medium">₹{(selectedStock as MarketStock)?.HIGH?.toFixed(2) || 'N/A'}</Text>
                               </Box>
-                              <Box>
-                                <Text color="gray.400" mb={1}>Sector</Text>
-                                <Badge colorScheme={
-                                    (selectedStock as MarketStock)?.SECTOR === 'Technology' ? 'blue' :
-                                    (selectedStock as MarketStock)?.SECTOR === 'Healthcare' ? 'green' :
-                                    (selectedStock as MarketStock)?.SECTOR === 'Financial Services' ? 'purple' :
-                                    (selectedStock as MarketStock)?.SECTOR === 'Consumer Goods' ? 'orange' :
-                                    (selectedStock as MarketStock)?.SECTOR === 'Energy' ? 'red' :
-                                    (selectedStock as MarketStock)?.SECTOR === 'RealEstate' ? 'teal' :
-                                    (selectedStock as MarketStock)?.SECTOR === 'Utilities' ? 'cyan' :
-                                    (selectedStock as MarketStock)?.SECTOR === 'Industrials' ? 'gray' :
-                                    (selectedStock as MarketStock)?.SECTOR === 'Materials' ? 'yellow' :
-                                    'pink' // For Telecommunications
-                                  }
-                                >
-                                  {(selectedStock as MarketStock)?.SECTOR || 'N/A'}
-                                </Badge>
-                              </Box>
+                             
                             </SimpleGrid>
                             
                             <Divider my={4} />
@@ -1614,7 +1597,7 @@ const SimulatorPage: React.FC = () => {
 
       {/* Stock Transaction Modal - Increased size for better layout */}
       {selectedStock && (
-        <Modal isOpen={isOpen} onClose={onClose} size="xl">
+        <Modal isOpen={isOpen} onClose={onClose} size="2xl">
           <ModalOverlay backdropFilter="blur(10px)" />
           <ModalContent bg="darkBlue.800" color="white" maxW="1000px">
             <ModalHeader>
@@ -1624,11 +1607,12 @@ const SimulatorPage: React.FC = () => {
             </ModalHeader>
             <ModalCloseButton />
 
-            <ModalBody>
-              <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6} mb={6}>
-                <Box>
-                  <Text color="gray.400" mb={1}>Current Price</Text>
-                  <Flex align="center">
+            <ModalBody p={6}>
+              {/* Market Information */}
+              <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6} mb={8}>
+                <Box className="glass-card" p={4} borderRadius="md">
+                  <Text color="gray.400" mb={2} fontWeight="bold">Price Information</Text>
+                  <Flex align="center" mb={4}>
                     <Heading size="md">₹{((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0).toFixed(2)}</Heading>
                     <Badge ml={2} colorScheme={(selectedStock as MarketStock)?.CHANGE && (selectedStock as MarketStock).CHANGE >= 0 ? 'green' : 'red'}>
                       {(selectedStock as MarketStock)?.CHANGE && (selectedStock as MarketStock).CHANGE >= 0 ? '+' : ''}{Math.abs((selectedStock as MarketStock)?.CHANGE_PERCENT || 0).toFixed(2)}%
@@ -1636,152 +1620,153 @@ const SimulatorPage: React.FC = () => {
                   </Flex>
                   
                   {(selectedStock as MarketStock)?.PREV_CLOSE && (
-                    <Box mt={4}>
+                    <Box mt={2}>
                       <Text color="gray.400" mb={1}>Previous Close</Text>
-                      <Heading size="md">₹{(selectedStock as MarketStock).PREV_CLOSE.toFixed(2)}</Heading>
+                      <Heading size="sm">₹{(selectedStock as MarketStock).PREV_CLOSE.toFixed(2)}</Heading>
                     </Box>
                   )}
                 </Box>
                 
-                  <Box>
-                  <Text color="gray.400" mb={2}>Market Information</Text>
-                  <SimpleGrid columns={2} spacing={3}>
+                <Box className="glass-card" p={4} borderRadius="md">
+                  <Text color="gray.400" mb={2} fontWeight="bold">Market Information</Text>
+                  <SimpleGrid columns={2} spacing={4}>
                     <Box>
                       <Text fontSize="xs" color="gray.500">Volume</Text>
-                      <Text fontSize="sm">{(selectedStock as MarketStock)?.VOLUME || 'N/A'}</Text>
+                      <Text fontSize="sm" fontWeight="medium">{(selectedStock as MarketStock)?.VOLUME || 'N/A'}</Text>
                     </Box>
                     <Box>
                       <Text fontSize="xs" color="gray.500">Market Cap</Text>
-                      <Text fontSize="sm">{(selectedStock as MarketStock)?.MARKET_CAP || 'N/A'}</Text>
+                      <Text fontSize="sm" fontWeight="medium">{(selectedStock as MarketStock)?.MARKET_CAP || 'N/A'}</Text>
                     </Box>
                     <Box>
                       <Text fontSize="xs" color="gray.500">Day Range</Text>
-                    <Text fontSize="sm">
+                      <Text fontSize="sm" fontWeight="medium">
                         {(selectedStock as MarketStock)?.LOW && (selectedStock as MarketStock)?.HIGH ? 
                           `₹${(selectedStock as MarketStock).LOW.toFixed(2)} - ₹${(selectedStock as MarketStock).HIGH.toFixed(2)}` : 
                           'N/A'}
-                    </Text>
-                  </Box>
-                    <Box>
-                      <Text fontSize="xs" color="gray.500">52W Range</Text>
-                      <Text fontSize="sm">
-                        {/* 52W range is not part of the MarketStock interface */}
-                        N/A
                       </Text>
                     </Box>
-              </SimpleGrid>
+                    <Box>
+                      <Text fontSize="xs" color="gray.500">52W Range</Text>
+                      <Text fontSize="sm" fontWeight="medium">N/A</Text>
+                    </Box>
+                  </SimpleGrid>
                 </Box>
               </Grid>
               
-              <Box height="300px" mb={6}>
-                <Flex justify="space-between" align="center" mb={2}>
+              {/* Chart Section - Completely Separate */}
+              <Box className="glass-card" p={4} mb={8} borderRadius="md">
+                <Flex justify="space-between" align="center" mb={4}>
                   <Heading size="sm">{(selectedStock as MarketStock)?.NAME || (selectedStock as PortfolioStock)?.name} Chart</Heading>
                   <ButtonGroup size="xs" isAttached variant="outline">
-                    <Button onClick={() => setSelectedChartInterval('1D')} colorScheme={selectedChartInterval === '1D' ? 'blue' : undefined}>1D</Button>
-                    <Button onClick={() => setSelectedChartInterval('1W')} colorScheme={selectedChartInterval === '1W' ? 'blue' : undefined}>1W</Button>
-                    <Button onClick={() => setSelectedChartInterval('1M')} colorScheme={selectedChartInterval === '1M' ? 'blue' : undefined}>1M</Button>
-                    <Button onClick={() => setSelectedChartInterval('3M')} colorScheme={selectedChartInterval === '3M' ? 'blue' : undefined}>3M</Button>
-                    <Button onClick={() => setSelectedChartInterval('6M')} colorScheme={selectedChartInterval === '6M' ? 'blue' : undefined}>6M</Button>
-                    <Button onClick={() => setSelectedChartInterval('1Y')} colorScheme={selectedChartInterval === '1Y' ? 'blue' : undefined}>1Y</Button>
+                    <Button onClick={() => setSelectedChartInterval('1D')} colorScheme={selectedChartInterval === '1D' ? 'blue' : 'red'}>1D</Button>
+                    <Button onClick={() => setSelectedChartInterval('1W')} colorScheme={selectedChartInterval === '1W' ? 'blue' : 'red'}>1W</Button>
+                    <Button onClick={() => setSelectedChartInterval('1M')} colorScheme={selectedChartInterval === '1M' ? 'blue' : 'red'}>1M</Button>
+                    <Button onClick={() => setSelectedChartInterval('3M')} colorScheme={selectedChartInterval === '3M' ? 'blue' : 'red'}>3M</Button>
+                    <Button onClick={() => setSelectedChartInterval('6M')} colorScheme={selectedChartInterval === '6M' ? 'blue' : 'red'}>6M</Button>
+                    <Button onClick={() => setSelectedChartInterval('1Y')} colorScheme={selectedChartInterval === '1Y' ? 'blue' : 'red'}>1Y</Button>
                   </ButtonGroup>
                 </Flex>
-                <EnhancedStockChart 
-                  symbol={(selectedStock as MarketStock)?.SYMBOL ? `NSE:${(selectedStock as MarketStock).SYMBOL}` : (selectedStock as PortfolioStock)?.symbol}
-                  name={(selectedStock as MarketStock)?.NAME || (selectedStock as PortfolioStock)?.name}
-                  currentPrice={(selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0}
-                  previousClose={(selectedStock as MarketStock)?.PREV_CLOSE || (selectedStock as PortfolioStock)?.purchasePrice || 0}
-                  change={(selectedStock as MarketStock)?.CHANGE || ((selectedStock as PortfolioStock)?.currentPrice || 0) - ((selectedStock as PortfolioStock)?.purchasePrice || 0)}
-                  changePercent={(selectedStock as MarketStock)?.CHANGE_PERCENT || ((selectedStock as PortfolioStock)?.profitLossPercentage || 0)}
-                  timeInterval={selectedChartInterval}
-                />
+                <Box height="500px" width="100%" mb={4} overflow="auto">
+                  <EnhancedStockChart 
+                    symbol={(selectedStock as MarketStock)?.SYMBOL ? `NSE:${(selectedStock as MarketStock).SYMBOL}` : (selectedStock as PortfolioStock)?.symbol}
+                    name={(selectedStock as MarketStock)?.NAME || (selectedStock as PortfolioStock)?.name}
+                    currentPrice={(selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0}
+                    previousClose={(selectedStock as MarketStock)?.PREV_CLOSE || (selectedStock as PortfolioStock)?.purchasePrice || 0}
+                    change={(selectedStock as MarketStock)?.CHANGE || ((selectedStock as PortfolioStock)?.currentPrice || 0) - ((selectedStock as PortfolioStock)?.purchasePrice || 0)}
+                    changePercent={(selectedStock as MarketStock)?.CHANGE_PERCENT || ((selectedStock as PortfolioStock)?.profitLossPercentage || 0)}
+                    timeInterval={selectedChartInterval}
+                  />
+                </Box>
               </Box>
               
-              <Divider my={4} borderColor="whiteAlpha.300" />
+              {/* Place Order Section - Completely Separate */}
+              <Box className="glass-card" p={4} borderRadius="md">
+                <Heading size="sm" mb={4}>Place Order</Heading>
               
-              <Heading size="sm" mb={4}>Place Order</Heading>
-              
-              <HStack mb={4}>
-                <Button 
-                  flex={1} 
-                  colorScheme={transactionType === 'buy' ? 'green' : 'gray'}
-                  variant={transactionType === 'buy' ? 'solid' : 'outline'}
-                  onClick={() => setTransactionType('buy')}
-                  leftIcon={<FiTrendingUp />}
-                >
-                  Buy
-                </Button>
-                <Button 
-                  flex={1} 
-                  colorScheme={transactionType === 'sell' ? 'red' : 'gray'}
-                  variant={transactionType === 'sell' ? 'solid' : 'outline'}
-                  onClick={() => setTransactionType('sell')}
-                  leftIcon={<FiTrendingDown />}
-                >
-                  Sell
-                </Button>
-              </HStack>
-              
-              <Grid templateColumns="repeat(2, 1fr)" gap={4} mb={4}>
-                <FormControl>
-                  <FormLabel>Amount to {transactionType === 'buy' ? 'Invest' : 'Sell'}</FormLabel>
-                  <NumberInput 
-                    value={buyAmount}
-                    onChange={(valueString) => setBuyAmount(parseFloat(valueString))}
-                    min={100}
-                    max={portfolio.cash}
+                <HStack mb={4}>
+                  <Button 
+                    flex={1} 
+                    colorScheme={transactionType === 'buy' ? 'green' : 'gray'}
+                    variant={transactionType === 'buy' ? 'solid' : 'outline'}
+                    onClick={() => setTransactionType('buy')}
+                    leftIcon={<FiTrendingUp />}
                   >
-                    <NumberInputField />
-                  </NumberInput>
-                </FormControl>
+                    Buy
+                  </Button>
+                  <Button 
+                    flex={1} 
+                    colorScheme={transactionType === 'sell' ? 'red' : 'gray'}
+                    variant={transactionType === 'sell' ? 'solid' : 'outline'}
+                    onClick={() => setTransactionType('sell')}
+                    leftIcon={<FiTrendingDown />}
+                  >
+                    Sell
+                  </Button>
+                </HStack>
                 
-                <FormControl>
-                  <FormLabel>Order Type</FormLabel>
-                  <Select defaultValue="market" bg="whiteAlpha.100">
-                    <option value="market">Market Order</option>
-                    <option value="limit">Limit Order</option>
-                    <option value="stop">Stop Order</option>
-                  </Select>
-                </FormControl>
-              </Grid>
-              
-              <Box p={4} bg="whiteAlpha.100" borderRadius="md" mb={4}>
-                <Flex justify="space-between" mb={2}>
-                  <Text fontSize="sm">Estimated Shares</Text>
-                  <Text fontSize="sm" fontWeight="bold">
-                    {selectedStock && ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice) 
-                      ? Math.floor(buyAmount / ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 1))
-                      : 0} shares
-                  </Text>
-                </Flex>
-                <Flex justify="space-between" mb={2}>
-                  <Text fontSize="sm">Share Price</Text>
-                  <Text fontSize="sm">₹{
-                    selectedStock 
-                      ? (((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice) || 0).toFixed(2)
-                      : 'N/A'
-                  }</Text>
-                </Flex>
-                <Flex justify="space-between" mb={2}>
-                  <Text fontSize="sm">Estimated Cost</Text>
-                  <Text fontSize="sm">₹{
-                    selectedStock && ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice)
-                      ? (Math.floor(buyAmount / ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 1)) 
-                         * ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0)).toFixed(2)
-                      : '0.00'
-                  }</Text>
-                </Flex>
-                <Divider my={2} borderColor="whiteAlpha.300" />
-                <Flex justify="space-between">
-                  <Text fontSize="sm" fontWeight="bold">Remaining Cash</Text>
-                  <Text fontSize="sm" fontWeight="bold">
-                    ₹{
+                <Grid templateColumns="repeat(2, 1fr)" gap={4} mb={4}>
+                  <FormControl>
+                    <FormLabel>Amount to {transactionType === 'buy' ? 'Invest' : 'Sell'}</FormLabel>
+                    <NumberInput 
+                      value={buyAmount}
+                      onChange={(valueString) => setBuyAmount(parseFloat(valueString))}
+                      min={100}
+                      max={portfolio.cash}
+                    >
+                      <NumberInputField />
+                    </NumberInput>
+                  </FormControl>
+                  
+                  <FormControl>
+                    <FormLabel>Order Type</FormLabel>
+                    <Select defaultValue="market" bg="whiteAlpha.100">
+                      <option value="market">Market Order</option>
+                      <option value="limit">Limit Order</option>
+                      <option value="stop">Stop Order</option>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Box p={4} bg="whiteAlpha.100" borderRadius="md" mb={4}>
+                  <Flex justify="space-between" mb={2}>
+                    <Text fontSize="sm">Estimated Shares</Text>
+                    <Text fontSize="sm" fontWeight="bold">
+                      {selectedStock && ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice) 
+                        ? Math.floor(buyAmount / ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 1))
+                        : 0} shares
+                    </Text>
+                  </Flex>
+                  <Flex justify="space-between" mb={2}>
+                    <Text fontSize="sm">Share Price</Text>
+                    <Text fontSize="sm">₹{
+                      selectedStock 
+                        ? (((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice) || 0).toFixed(2)
+                        : 'N/A'
+                    }</Text>
+                  </Flex>
+                  <Flex justify="space-between" mb={2}>
+                    <Text fontSize="sm">Estimated Cost</Text>
+                    <Text fontSize="sm">₹{
                       selectedStock && ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice)
-                        ? (portfolio.cash - (Math.floor(buyAmount / ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 1)) 
-                           * ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0))).toFixed(2)
-                        : portfolio.cash.toFixed(2)
-                    }
-                  </Text>
-                </Flex>
+                        ? (Math.floor(buyAmount / ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 1)) 
+                           * ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0)).toFixed(2)
+                        : '0.00'
+                    }</Text>
+                  </Flex>
+                  <Divider my={2} borderColor="whiteAlpha.300" />
+                  <Flex justify="space-between">
+                    <Text fontSize="sm" fontWeight="bold">Remaining Cash</Text>
+                    <Text fontSize="sm" fontWeight="bold">
+                      ₹{
+                        selectedStock && ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice)
+                          ? (portfolio.cash - (Math.floor(buyAmount / ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 1)) 
+                             * ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0))).toFixed(2)
+                          : portfolio.cash.toFixed(2)
+                      }
+                    </Text>
+                  </Flex>
+                </Box>
               </Box>
             </ModalBody>
 
@@ -1791,9 +1776,6 @@ const SimulatorPage: React.FC = () => {
               </Button>
               <Button 
                 colorScheme={transactionType === 'buy' ? 'green' : 'red'} 
-                size="lg"
-                width="full"
-                mt={4}
                 onClick={handleTransaction}
               >
                 {transactionType === 'buy' ? 'Buy' : 'Sell'} {(selectedStock as MarketStock)?.SYMBOL || (selectedStock as PortfolioStock)?.symbol}

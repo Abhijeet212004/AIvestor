@@ -27,7 +27,8 @@ const Navigation: React.FC = () => {
   }, []);
 
   const navItems = [
-    { name: 'Home', path: '/', icon: <FiHome /> },
+    { name: 'Home', path: '/', icon: 
+    <FiHome /> },
     { name: 'AI Chat', path: '/chat', icon: <FiMessageCircle /> },
     { name: 'Discovery', path: '/discovery', icon: <FiCompass /> },
     { name: 'Education', path: '/education', icon: <FiBookOpen /> },

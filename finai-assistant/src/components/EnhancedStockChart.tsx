@@ -220,7 +220,7 @@ const EnhancedStockChart: React.FC<EnhancedStockChartProps> = ({
               date.toLocaleDateString();
           },
           label: (context) => {
-            return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+            return `${context.dataset.label}: Rs${context.parsed.y.toFixed(2)}`;
           }
         }
       }
@@ -257,7 +257,7 @@ const EnhancedStockChart: React.FC<EnhancedStockChartProps> = ({
         },
         ticks: {
           color: textColor,
-          callback: (value) => `$${value}`,
+          callback: (value) => `Rs${value}`,
           maxTicksLimit: 6
         }
       }
@@ -476,26 +476,26 @@ const EnhancedStockChart: React.FC<EnhancedStockChartProps> = ({
             animate="pulse"
           >
             <Stat size="sm">
-              <StatLabel fontSize="xs">Open</StatLabel>
-              <StatNumber fontSize="sm">
+              <StatLabel fontSize="xs" color="blue.600">Open</StatLabel>
+              <StatNumber fontSize="sm" color="blue.600">
                 ${(chartData[0]?.open || 0).toFixed(2)}
               </StatNumber>
             </Stat>
             <Stat size="sm">
-              <StatLabel fontSize="xs">High</StatLabel>
-              <StatNumber fontSize="sm" color="green.500">
+              <StatLabel fontSize="xs" color="green.600">High</StatLabel>
+              <StatNumber fontSize="sm" color="green.600">
                 ${Math.max(...chartData.map(d => d.high || 0)).toFixed(2)}
               </StatNumber>
             </Stat>
             <Stat size="sm">
-              <StatLabel fontSize="xs">Low</StatLabel>
-              <StatNumber fontSize="sm" color="red.500">
+              <StatLabel fontSize="xs" color="red.600">Low</StatLabel>
+              <StatNumber fontSize="sm" color="red.600">
                 ${Math.min(...chartData.map(d => d.low || 0)).toFixed(2)}
               </StatNumber>
             </Stat>
             <Stat size="sm">
-              <StatLabel fontSize="xs">Prev Close</StatLabel>
-              <StatNumber fontSize="sm">
+              <StatLabel fontSize="xs" color="gray.600">Prev Close</StatLabel>
+              <StatNumber fontSize="sm" color="gray.600">
                 ${previousClose.toFixed(2)}
               </StatNumber>
             </Stat>
