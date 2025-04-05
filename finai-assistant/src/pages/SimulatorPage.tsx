@@ -1069,6 +1069,7 @@ const SimulatorPage: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
+                bg="white"
                 leftIcon={<Icon as={FiRefreshCw} />}
                 onClick={refreshCSVData}
                 mr={4}
@@ -1178,7 +1179,7 @@ const SimulatorPage: React.FC = () => {
                         </Text>
                       </Flex>
                       
-                      <Button size="sm" leftIcon={<FiRefreshCw />} variant="outline" width="full">
+                      <Button size="sm" bg="white" leftIcon={<FiRefreshCw />} variant="outline" width="full">
                         Reset Portfolio
                       </Button>
                     </Box>
@@ -1234,7 +1235,7 @@ const SimulatorPage: React.FC = () => {
                         <Heading size="sm">Your Holdings</Heading>
                         <HStack>
                           <Menu>
-                            <MenuButton as={Button} size="sm" rightIcon={<FiChevronDown />} variant="outline">
+                            <MenuButton bg="white" as={Button} size="sm" rightIcon={<FiChevronDown />} variant="outline">
                               Sort By
                             </MenuButton>
                             <MenuList bg="darkBlue.800" borderColor="whiteAlpha.300">
@@ -1329,7 +1330,7 @@ const SimulatorPage: React.FC = () => {
                         <Heading size="sm">Transaction History</Heading>
                         <HStack>
                           <Menu>
-                            <MenuButton as={Button} size="sm" rightIcon={<FiChevronDown />} variant="outline">
+                            <MenuButton bg="white" as={Button} size="sm" rightIcon={<FiChevronDown />} variant="outline">
                               Filter
                             </MenuButton>
                             <MenuList bg="darkBlue.800" borderColor="whiteAlpha.300">
@@ -1340,7 +1341,7 @@ const SimulatorPage: React.FC = () => {
                               <MenuItem>Withdrawals</MenuItem>
                             </MenuList>
                           </Menu>
-                          <Button size="sm" leftIcon={<FiCalendar />} variant="outline">
+                          <Button bg="white" size="sm" leftIcon={<FiCalendar />} variant="outline">
                             Date Range
                           </Button>
                         </HStack>

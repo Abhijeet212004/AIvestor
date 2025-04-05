@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
-import { Box, Container, Grid, GridItem, Heading, Text, Flex, Button, HStack, VStack, Icon, SimpleGrid, Avatar, AvatarBadge, Badge, Tag, Tabs, TabList, TabPanels, Tab, TabPanel, Table, Thead, Tbody, Tr, Th, Td, Progress, Divider, Menu, MenuButton, MenuList, MenuItem, useColorModeValue } from '@chakra-ui/react';
+import React, { useEffect, useState } from 'react';
+import { Box, Container, Grid, GridItem, Heading, Text, Flex, Button, HStack, VStack, Icon, SimpleGrid, Avatar, AvatarBadge, Badge, Tag, Tabs, TabList, TabPanels, Tab, TabPanel, Table, Thead, Tbody, Tr, Th, Td, Progress, Divider, Menu, MenuButton, MenuList, MenuItem, useColorModeValue, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, useDisclosure, Input, Textarea, Select, useToast, Image, FormControl, FormLabel } from '@chakra-ui/react';
 import { motion, useAnimation } from 'framer-motion';
-import { FiUsers, FiAward, FiTrendingUp, FiMessageSquare, FiThumbsUp, FiCalendar, FiBriefcase, FiHeart, FiClock, FiChevronDown, FiCheck, FiMoreVertical, FiStar, FiShield, FiTrendingUp as FiTrendingUpIcon, FiDollarSign } from 'react-icons/fi';
+import { FiUsers, FiAward, FiTrendingUp, FiMessageSquare, FiThumbsUp, FiCalendar, FiBriefcase, FiHeart, FiClock, FiChevronDown, FiCheck, FiMoreVertical, FiStar, FiShield, FiTrendingUp as FiTrendingUpIcon, FiDollarSign, FiSearch, FiSend, FiPlus, FiX } from 'react-icons/fi';
 import Navigation from '../components/Navigation';
 import AnimatedCard from '../components/AnimatedCard';
 import StockChart from '../components/StockChart';
 import ProtectedFeature from '../components/ProtectedFeature';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 // Enhanced motion components with premium animations
 const MotionBox = motion(Box);
@@ -20,22 +22,129 @@ const premiumBg = "linear-gradient(135deg, #1A202C 0%, #2D3748 100%)";
 const glowEffect = "0px 0px 15px rgba(72, 187, 120, 0.15)";
 const cardHoverTransition = { duration: 0.3, ease: "easeOut" };
 
+// Type definitions
+interface EventData {
+  id: number;
+  title: string;
+  date: string;
+  time: string;
+  speaker: string;
+  attendees: number;
+  category: string;
+}
+
+interface CalendarDay {
+  day: number | null;
+  events: EventData[];
+}
+
+interface SuggestedConnection {
+  id: number;
+  name: string;
+  badge: string;
+  avatar: string;
+}
+
+interface LeaderboardEntry {
+  id: number;
+  name: string;
+  avatar: string;
+  points: number;
+  rank: number;
+  returnRate: number;
+  badge: string;
+  streak: number;
+  topHoldings: string[];
+}
+
+interface CommunityPost {
+  id: number;
+  user: LeaderboardEntry;
+  title: string;
+  content: string;
+  category: string;
+  timestamp: string;
+  likes: number;
+  comments: number;
+  tags: string[];
+}
+
 const CommunityPage: React.FC = () => {
   const controls = useAnimation();
+  const { currentUser, userProfile } = useAuth();
+  const navigate = useNavigate();
+  const toast = useToast();
   
-  useEffect(() => {
-    controls.start({ opacity: 1, y: 0 });
-  }, [controls]);
-
-  // Premium color theme
-  const cardBg = "rgba(26, 32, 44, 0.8)";
-  const highlightColor = "#F6AD55"; // Gold/amber
-  const accentColor = "#48BB78"; // Green
-  const dangerColor = "#E53E3E"; // Red
-  const tableBgHover = "rgba(72, 187, 120, 0.08)";
-
-  // Mock leaderboard data
-  const leaderboardData = [
+  // Modal controls
+  const { isOpen: isPostModalOpen, onOpen: onPostModalOpen, onClose: onPostModalClose } = useDisclosure();
+  const { isOpen: isFriendModalOpen, onOpen: onFriendModalOpen, onClose: onFriendModalClose } = useDisclosure();
+  
+  // Post state
+  const [postContent, setPostContent] = useState<string>('');
+  const [postTitle, setPostTitle] = useState<string>('');
+  const [postCategory, setPostCategory] = useState<string>('general');
+  
+  // Friend search state
+  const [friendSearch, setFriendSearch] = useState<string>('');
+  
+  // Events calendar data (mock data for now)
+  const [eventsData, setEventsData] = useState<EventData[]>([
+    {
+      id: 1,
+      title: 'Webinar: Understanding IPO Investing',
+      date: '2025-04-15',
+      time: '18:00',
+      speaker: 'Rajesh Kumar, Investment Analyst',
+      attendees: 156,
+      category: 'Educational'
+    },
+    {
+      id: 2,
+      title: 'Live Q&A with Top Investors',
+      date: '2025-04-22',
+      time: '19:30',
+      speaker: 'Multiple Guest Speakers',
+      attendees: 243,
+      category: 'AMA'
+    },
+    {
+      id: 3,
+      title: 'Budget Impact Analysis Workshop',
+      date: '2025-05-05',
+      time: '17:00',
+      speaker: 'Neha Gupta, Financial Consultant',
+      attendees: 112,
+      category: 'Workshop'
+    },
+    {
+      id: 4,
+      title: 'Dividend Investing Strategies',
+      date: '2025-05-12',
+      time: '16:30',
+      speaker: 'Arjun Kapoor, Portfolio Manager',
+      attendees: 178,
+      category: 'Educational'
+    },
+    {
+      id: 5,
+      title: 'Technical Analysis Masterclass',
+      date: '2025-05-18',
+      time: '14:00',
+      speaker: 'Vijay Sharma, Trading Expert',
+      attendees: 205,
+      category: 'Masterclass'
+    }
+  ]);
+  
+  // Suggested connections
+  const suggestedConnections: SuggestedConnection[] = [
+    { id: 1, name: 'Priya Patel', badge: 'Platinum Investor', avatar: 'https://randomuser.me/api/portraits/women/2.jpg' },
+    { id: 2, name: 'Rahul Sharma', badge: 'Diamond Investor', avatar: 'https://randomuser.me/api/portraits/men/1.jpg' },
+    { id: 3, name: 'Aisha Khan', badge: 'Silver Investor', avatar: 'https://randomuser.me/api/portraits/women/4.jpg' }
+  ];
+  
+  // Leaderboard data
+  const leaderboardData: LeaderboardEntry[] = [
     { 
       id: 1, 
       name: 'Rahul Sharma', 
@@ -44,13 +153,8 @@ const CommunityPage: React.FC = () => {
       rank: 1, 
       returnRate: 18.42, 
       badge: 'Diamond Investor', 
-      badgeColor: '#B4F8C8',
       streak: 42,
-      portfolio: {
-        totalValue: 15870.42,
-        performance: 22.14,
-        topHoldings: ['AAPL', 'MSFT', 'AMZN']
-      }
+      topHoldings: ['AAPL', 'MSFT', 'AMZN']
     },
     { 
       id: 2, 
@@ -60,13 +164,8 @@ const CommunityPage: React.FC = () => {
       rank: 2, 
       returnRate: 16.38, 
       badge: 'Platinum Investor',
-      badgeColor: '#A0E7E5',
       streak: 28,
-      portfolio: {
-        totalValue: 14560.89,
-        performance: 18.21,
-        topHoldings: ['GOOGL', 'TSLA', 'NFLX']
-      }
+      topHoldings: ['GOOGL', 'TSLA', 'NFLX']
     },
     { 
       id: 3, 
@@ -76,13 +175,8 @@ const CommunityPage: React.FC = () => {
       rank: 3, 
       returnRate: 15.12, 
       badge: 'Gold Investor',
-      badgeColor: '#FFAEBC',
       streak: 19,
-      portfolio: {
-        totalValue: 13250.67,
-        performance: 15.87,
-        topHoldings: ['NVDA', 'AMZN', 'JPM']
-      }
+      topHoldings: ['NVDA', 'AMZN', 'JPM']
     },
     { 
       id: 4, 
@@ -92,13 +186,8 @@ const CommunityPage: React.FC = () => {
       rank: 4, 
       returnRate: 14.75, 
       badge: 'Silver Investor',
-      badgeColor: '#FBE7C6',
       streak: 14,
-      portfolio: {
-        totalValue: 12180.35,
-        performance: 14.22,
-        topHoldings: ['META', 'AAPL', 'MSFT']
-      }
+      topHoldings: ['META', 'AAPL', 'MSFT']
     },
     { 
       id: 5, 
@@ -108,21 +197,16 @@ const CommunityPage: React.FC = () => {
       rank: 5, 
       returnRate: 13.40, 
       badge: 'Bronze Investor',
-      badgeColor: '#B4F8C8',
       streak: 10,
-      portfolio: {
-        totalValue: 11540.82,
-        performance: 12.98,
-        topHoldings: ['TSLA', 'GOOGL', 'NFLX']
-      }
+      topHoldings: ['TSLA', 'GOOGL', 'NFLX']
     }
   ];
-
-  // Mock community posts
-  const communityPosts = [
+  
+  // Community posts data
+  const communityPosts: CommunityPost[] = [
     {
       id: 1,
-      user: { name: 'Rahul Sharma', avatar: 'https://randomuser.me/api/portraits/men/1.jpg', badge: 'Diamond Investor' },
+      user: leaderboardData[0], // Rahul Sharma
       title: 'My investment strategy for tech stocks in 2023',
       content: 'I\'ve been focusing on high-growth tech stocks with strong fundamentals. Here\'s my analysis of the current market trends and why I believe companies with solid cash reserves will outperform in the coming quarters...',
       category: 'Strategy',
@@ -133,7 +217,7 @@ const CommunityPage: React.FC = () => {
     },
     {
       id: 2,
-      user: { name: 'Priya Patel', avatar: 'https://randomuser.me/api/portraits/women/2.jpg', badge: 'Platinum Investor' },
+      user: leaderboardData[1], // Priya Patel 
       title: 'How I diversified my portfolio to reduce risk',
       content: 'After seeing high volatility in my all-equity portfolio, I decided to implement a more balanced approach. I\'ve allocated 60% to equities, 20% to bonds, 10% to gold, and 10% to REITs. This has significantly improved my risk-adjusted returns...',
       category: 'Portfolio Management',
@@ -144,7 +228,7 @@ const CommunityPage: React.FC = () => {
     },
     {
       id: 3,
-      user: { name: 'Vikram Singh', avatar: 'https://randomuser.me/api/portraits/men/3.jpg', badge: 'Gold Investor' },
+      user: leaderboardData[2], // Vikram Singh
       title: 'Analyzing the recent banking sector developments',
       content: 'With recent policy changes in the banking sector, I believe we\'re going to see significant shifts in how banks operate. Here\'s my take on which banking stocks might benefit from these changes and why...',
       category: 'Sector Analysis',
@@ -154,101 +238,105 @@ const CommunityPage: React.FC = () => {
       tags: ['Banking Sector', 'Financial Analysis', 'Policy Impact']
     }
   ];
+  
+  // Calendar view state
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  
+  useEffect(() => {
+    controls.start({ opacity: 1, y: 0 });
+  }, [controls]);
 
-  // Mock upcoming events
-  const upcomingEvents = [
-    {
-      id: 1,
-      title: 'Webinar: Understanding IPO Investing',
-      date: 'June 15, 2023',
-      time: '6:00 PM IST',
-      speaker: 'Rajesh Kumar, Investment Analyst',
-      attendees: 156,
-      category: 'Educational'
-    },
-    {
-      id: 2,
-      title: 'Live Q&A with Top Investors',
-      date: 'June 22, 2023',
-      time: '7:30 PM IST',
-      speaker: 'Multiple Guest Speakers',
-      attendees: 243,
-      category: 'Interactive'
-    },
-    {
-      id: 3,
-      title: 'Investment Challenge Kickoff',
-      date: 'July 1, 2023',
-      time: '10:00 AM IST',
-      speaker: 'AIvestor Team',
-      attendees: 318,
-      category: 'Challenge'
+  // Handle post submission
+  const handlePostSubmit = (): void => {
+    if (!postTitle.trim() || !postContent.trim()) {
+      toast({
+        title: "Missing information",
+        description: "Please provide both a title and content for your post",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
     }
-  ];
+    
+    toast({
+      title: "Post created!",
+      description: "Your post has been successfully created",
+      status: "success",
+      duration: 3000,
+      isClosable: true,
+    });
+    
+    // Reset form and close modal
+    setPostTitle('');
+    setPostContent('');
+    setPostCategory('general');
+    onPostModalClose();
+  };
+  
+  // Handle find friend
+  const handleFindFriend = (): void => {
+    toast({
+      title: "Friend search",
+      description: `Searching for users matching "${friendSearch}"`,
+      status: "info",
+      duration: 3000,
+      isClosable: true,
+    });
+    setFriendSearch('');
+    onFriendModalClose();
+  };
+  
+  // User profile values
+  const userPoints = 4280;
+  const userReturn = 11.2;
+  const userRank = 87;
+  const userStreak = 7;
+  const userBadge = 'Silver Investor';
+  
+  // Generate calendar dates for the selected month
+  const getDaysInMonth = (year: number, month: number): number => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+  
+  const getFirstDayOfMonth = (year: number, month: number): number => {
+    return new Date(year, month, 1).getDay();
+  };
+  
+  const generateCalendarDays = (): CalendarDay[] => {
+    const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
+    const firstDay = getFirstDayOfMonth(selectedYear, selectedMonth);
+    const days: CalendarDay[] = [];
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < firstDay; i++) {
+      days.push({ day: null, events: [] });
+    }
+    
+    // Add days of the month with their events
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dayEvents = eventsData.filter(event => event.date === dateStr);
+      days.push({ day, events: dayEvents });
+    }
+    
+    return days;
+  };
+  
+  const calendarDays = generateCalendarDays();
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-  // Mock trending topics
-  const trendingTopics = [
-    { tag: 'AI Stocks', count: 342 },
-    { tag: 'Budget Impact', count: 287 },
-    { tag: 'Renewable Energy', count: 246 },
-    { tag: 'Retirement Planning', count: 215 },
-    { tag: 'Cryptocurrency Analysis', count: 198 }
-  ];
+  // Premium color theme
+  const cardBg = "rgba(26, 32, 44, 0.8)";
+  const highlightColor = "#F6AD55"; // Gold/amber
+  const accentColor = "#48BB78"; // Green
+  const dangerColor = "#E53E3E"; // Red
+  const tableBgHover = "rgba(72, 187, 120, 0.08)";
 
-  // Render component
   return (
-    <Box minH="100vh" bg={premiumBg}>
-      {/* Custom Page Header */}
-      <Box 
-        position="fixed" 
-        top="0" 
-        left="0" 
-        right="0" 
-        zIndex="999"
-        overflow="hidden"
-      >
-        {/* Background decorative elements */}
-        <Box
-          position="absolute"
-          top="-10px"
-          left="-10px"
-          right="-10px"
-          bottom="-10px"
-          bgGradient={tealGradient}
-          opacity="0.95"
-          filter="blur(0px)"
-          transform="skewY(-1deg)"
-          boxShadow="lg"
-        />
-        
-        {/* Light pattern overlay */}
-        <Box
-          position="absolute"
-          top="0"
-          left="0"
-          right="0"
-          bottom="0"
-          opacity="0.1"
-          backgroundImage="url('data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"
-        />
-        
-        {/* Navigation Component */}
-        <Navigation />
-        
-        {/* Decorative community icon */}
-        <MotionBox
-          position="absolute"
-          top="0"
-          right="20px"
-          opacity="0.2"
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 0.2, scale: 1 }}
-          transition={{ duration: 1 }}
-        >
-          <Icon as={FiUsers} color="white" boxSize="80px" />
-        </MotionBox>
-      </Box>
-      
+    <Box minH="100vh" position="relative">
+      <Navigation />
       <Box as="main" pt="120px" pb="40px">
         <Container maxW="container.xl" px={4}>
           {/* Header Section with enhanced styling */}
@@ -340,7 +428,12 @@ const CommunityPage: React.FC = () => {
                       animate={{ scale: 1 }}
                       transition={{ type: "spring", stiffness: 260, damping: 20 }}
                     >
-                      <Avatar size="xl" src="https://randomuser.me/api/portraits/men/12.jpg" mr={6}>
+                      <Avatar 
+                        size="xl" 
+                        src={userProfile?.photoURL || "https://bit.ly/broken-link"} 
+                        mr={6}
+                        name={userProfile?.displayName || "User"}
+                      >
                         <AvatarBadge boxSize="1.25em" bg={accentColor} />
                       </Avatar>
                     </MotionBox>
@@ -367,7 +460,7 @@ const CommunityPage: React.FC = () => {
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.2 }}
                     >
-                      Welcome, Ajay!
+                      Welcome, {userProfile?.displayName?.split(' ')[0] || 'Investor'}!
                     </MotionHeading>
                     <HStack mt={2}>
                       <Badge 
@@ -377,22 +470,22 @@ const CommunityPage: React.FC = () => {
                         bgGradient={goldGradient}
                         color="gray.800"
                       >
-                        Silver Investor
+                        {userBadge}
                       </Badge>
-                      <Text fontSize="sm" color="gray.300">Rank #87</Text>
+                      <Text fontSize="sm" color="gray.300">Rank #{userRank}</Text>
                     </HStack>
                     <HStack mt={3}>
                       <Tag size="sm" bgGradient={goldGradient} color="gray.800" borderRadius="full">
                         <Icon as={FiAward} mr={1} />
-                        4,280 points
+                        {userPoints} points
                       </Tag>
                       <Tag size="sm" bgGradient={greenGradient} color="white" borderRadius="full">
                         <Icon as={FiTrendingUp} mr={1} />
-                        11.2% return
+                        {userReturn}% return
                       </Tag>
                       <Tag size="sm" colorScheme="orange" borderRadius="full">
                         <Icon as={FiClock} mr={1} />
-                        7 day streak
+                        {userStreak} day streak
                       </Tag>
                     </HStack>
                   </Box>
@@ -404,6 +497,7 @@ const CommunityPage: React.FC = () => {
                     color="white" 
                     leftIcon={<FiUsers />} 
                     size="sm"
+                    onClick={onFriendModalOpen}
                     _hover={{ 
                       bgGradient: "linear-gradient(135deg, #38A169 0%, #276749 100%)",
                       transform: "translateY(-2px)",
@@ -417,6 +511,7 @@ const CommunityPage: React.FC = () => {
                     variant="outline" 
                     leftIcon={<FiMessageSquare />} 
                     size="sm"
+                    onClick={onPostModalOpen}
                     borderColor={accentColor}
                     color={accentColor}
                     _hover={{
@@ -515,10 +610,10 @@ const CommunityPage: React.FC = () => {
                           </Heading>
                           <HStack>
                             <Menu>
-                              <MenuButton as={Button} size="sm" rightIcon={<FiChevronDown />} variant="outline">
+                              <MenuButton as={Button} size="sm" rightIcon={<FiChevronDown />} variant="outline" bg="white">
                                 This Month
                               </MenuButton>
-                              <MenuList bg="darkBlue.800" borderColor="whiteAlpha.300">
+                              <MenuList bg="white" borderColor="gray.200">
                                 <MenuItem>All Time</MenuItem>
                                 <MenuItem>This Year</MenuItem>
                                 <MenuItem>This Month</MenuItem>
@@ -526,10 +621,10 @@ const CommunityPage: React.FC = () => {
                               </MenuList>
                             </Menu>
                             <Menu>
-                              <MenuButton as={Button} size="sm" rightIcon={<FiChevronDown />} variant="outline">
+                              <MenuButton as={Button} size="sm" rightIcon={<FiChevronDown />} variant="outline" bg="white">
                                 Return Rate
                               </MenuButton>
-                              <MenuList bg="darkBlue.800" borderColor="whiteAlpha.300">
+                              <MenuList bg="white" borderColor="gray.200">
                                 <MenuItem>Return Rate</MenuItem>
                                 <MenuItem>Points</MenuItem>
                                 <MenuItem>Streak</MenuItem>
@@ -551,9 +646,9 @@ const CommunityPage: React.FC = () => {
                           </Tr>
                         </Thead>
                         <Tbody>
-                          {leaderboardData.map((investor, index) => (
+                          {leaderboardData.map((entry, index) => (
                             <MotionTr 
-                              key={investor.id} 
+                              key={entry.id} 
                               _hover={{ bg: tableBgHover }}
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
@@ -565,37 +660,37 @@ const CommunityPage: React.FC = () => {
                             >
                               <Td>
                                 <Flex align="center" justify="center" w="36px" h="36px" borderRadius="full" bg="whiteAlpha.200">
-                                  <Text fontWeight="bold">{investor.rank}</Text>
+                                  <Text fontWeight="bold">{entry.rank}</Text>
                                 </Flex>
                               </Td>
                               <Td>
                                 <Flex align="center">
-                                  <Avatar size="sm" src={investor.avatar} mr={3}>
-                                    {investor.rank <= 3 && (
+                                  <Avatar size="sm" src={entry.avatar} mr={3}>
+                                    {entry.rank <= 3 && (
                                       <AvatarBadge boxSize="1.25em" bg="yellow.500" borderColor="darkBlue.800">
                                         <Icon as={FiAward} color="white" boxSize="0.75em" />
                                       </AvatarBadge>
                                     )}
                                   </Avatar>
                                   <Box>
-                                    <Text fontWeight="medium">{investor.name}</Text>
-                                    <Badge variant="subtle" colorScheme="green">
-                                      {investor.badge}
-                                    </Badge>
+                                    <Text fontWeight="medium">{entry.name}</Text>
+                                    <Flex align="center">
+                                      <Badge mr={2} colorScheme="purple">{entry.badge}</Badge>
+                                      <Text fontSize="xs" color="gray.400">{entry.streak} day streak</Text>
+                                    </Flex>
                                   </Box>
                                 </Flex>
                               </Td>
                               <Td isNumeric color="green.400" fontWeight="medium">
-                                +{investor.returnRate}%
+                                +{entry.returnRate}%
                               </Td>
                               <Td isNumeric>
-                                <Text fontWeight="medium">{investor.points.toLocaleString()}</Text>
-                                <Text fontSize="xs" color="gray.400">{investor.streak} day streak</Text>
+                                <Text fontWeight="medium">{entry.points}</Text>
                               </Td>
                               <Td>
                                 <HStack>
-                                  {investor.portfolio.topHoldings.map((holding, index) => (
-                                    <Tag key={index} size="sm">{holding}</Tag>
+                                  {entry.topHoldings.map((holding, index) => (
+                                    <Tag size="sm" key={index}>{holding}</Tag>
                                   ))}
                                 </HStack>
                               </Td>
@@ -675,7 +770,7 @@ const CommunityPage: React.FC = () => {
                       <Box className="glass-card" p={6} w="full">
                         <Heading size="md" mb={4}>Trending Topics</Heading>
                         <VStack spacing={2} align="stretch">
-                          {trendingTopics.map((topic, index) => (
+                          {[1, 2, 3, 4, 5].map((topic, index) => (
                             <Flex 
                               key={index} 
                               justify="space-between" 
@@ -687,9 +782,9 @@ const CommunityPage: React.FC = () => {
                               _hover={{ bg: "whiteAlpha.200" }}
                             >
                               <Flex align="center">
-                                <Text fontSize="sm" fontWeight="medium">#{topic.tag}</Text>
+                                <Text fontSize="sm" fontWeight="medium">#{topic}</Text>
                               </Flex>
-                              <Text fontSize="xs" color="gray.400">{topic.count} posts</Text>
+                              <Text fontSize="xs" color="gray.400">342 posts</Text>
                             </Flex>
                           ))}
                         </VStack>
@@ -708,10 +803,10 @@ const CommunityPage: React.FC = () => {
                         <Heading size="md">Recent Discussions</Heading>
                         <HStack>
                           <Menu>
-                            <MenuButton as={Button} size="sm" rightIcon={<FiChevronDown />} variant="outline">
+                            <MenuButton as={Button} size="sm" rightIcon={<FiChevronDown />} variant="outline" bg="white">
                               All Categories
                             </MenuButton>
-                            <MenuList bg="darkBlue.800" borderColor="whiteAlpha.300">
+                            <MenuList bg="white" borderColor="gray.200">
                               <MenuItem>All Categories</MenuItem>
                               <MenuItem>Strategy</MenuItem>
                               <MenuItem>Portfolio Management</MenuItem>
@@ -724,11 +819,12 @@ const CommunityPage: React.FC = () => {
                         </HStack>
                       </Flex>
                       
+                      {/* Community posts */}
                       {communityPosts.map((post) => (
                         <AnimatedCard key={post.id} p={6} delay={post.id * 0.1}>
                           <HStack spacing={4} mb={4}>
-                            <Avatar size="md" src={post.user.avatar}>
-                              {post.user.badge.includes('Diamond') && (
+                            <Avatar size="md" src={post.user.avatar} mr={3}>
+                              {post.user.rank <= 2 && (
                                 <AvatarBadge boxSize="1.25em" bg="purple.500" borderColor="darkBlue.800">
                                   <Icon as={FiStar} color="white" boxSize="0.75em" />
                                 </AvatarBadge>
@@ -770,7 +866,7 @@ const CommunityPage: React.FC = () => {
                         </AnimatedCard>
                       ))}
                       
-                      <Button variant="outline" size="sm" alignSelf="center">
+                      <Button bg="white" variant="outline" size="sm" alignSelf="center">
                         Load More Posts
                       </Button>
                     </VStack>
@@ -781,9 +877,9 @@ const CommunityPage: React.FC = () => {
                       <Box className="glass-card" p={6} w="full">
                         <Heading size="md" mb={4}>Upcoming Events</Heading>
                         <VStack spacing={4} align="stretch">
-                          {upcomingEvents.map((event) => (
+                          {[1, 2, 3].map((event, index) => (
                             <Box 
-                              key={event.id} 
+                              key={event} 
                               p={4} 
                               bg="whiteAlpha.100" 
                               borderRadius="md"
@@ -791,20 +887,20 @@ const CommunityPage: React.FC = () => {
                               borderColor="blue.400"
                             >
                               <Flex justify="space-between" mb={2}>
-                                <Heading size="sm" noOfLines={1}>{event.title}</Heading>
-                                <Tag size="sm" colorScheme="blue">{event.category}</Tag>
+                                <Heading size="sm" noOfLines={1}>Webinar: Understanding IPO Investing</Heading>
+                                <Tag size="sm" colorScheme="blue">Educational</Tag>
                               </Flex>
                               <Flex align="center" mb={2}>
                                 <Icon as={FiCalendar} mr={2} color="gray.400" />
-                                <Text fontSize="sm">{event.date}, {event.time}</Text>
+                                <Text fontSize="sm">April 15, 2025, 6:00 PM IST</Text>
                               </Flex>
                               <Flex align="center" mb={3}>
                                 <Icon as={FiUsers} mr={2} color="gray.400" />
-                                <Text fontSize="sm">{event.attendees} attending</Text>
+                                <Text fontSize="sm">156 attending</Text>
                               </Flex>
                               <Flex justify="space-between" align="center">
                                 <Text fontSize="xs" color="gray.400">
-                                  Speaker: {event.speaker}
+                                  Speaker: Rajesh Kumar, Investment Analyst
                                 </Text>
                                 <Button size="xs" colorScheme="blue">RSVP</Button>
                               </Flex>
@@ -869,11 +965,166 @@ const CommunityPage: React.FC = () => {
                 </Grid>
               </TabPanel>
 
-              {/* Events Tab - Basic placeholder */}
+              {/* Events Tab with Calendar */}
               <TabPanel p={0}>
-                <Box className="glass-card" p={6}>
-                  <Heading size="md" mb={4}>Upcoming Events Calendar</Heading>
-                  <Text>Complete events calendar content will be implemented here.</Text>
+                <Box className="glass-card" p={6} minH="500px">
+                  <Heading size="md" mb={4} display="flex" alignItems="center">
+                    <Icon as={FiCalendar} mr={2} color="blue.400" />
+                    Upcoming Events Calendar
+                  </Heading>
+                  
+                  {/* Month/Year Selector */}
+                  <Flex justify="space-between" align="center" mb={6}>
+                    <Flex align="center">
+                      <Select 
+                        value={selectedMonth} 
+                        onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                        size="sm"
+                        width="130px"
+                        mr={2}
+                        bg="white"
+                        color="gray.800"
+                        borderColor="gray.300"
+                        _focus={{ borderColor: "blue.500" }}
+                      >
+                        {monthNames.map((month, index) => (
+                          <option key={index} value={index}>{month}</option>
+                        ))}
+                      </Select>
+                      <Select 
+                        value={selectedYear} 
+                        onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                        size="sm"
+                        width="100px"
+                        bg="white"
+                        color="gray.800"
+                        borderColor="gray.300"
+                        _focus={{ borderColor: "blue.500" }}
+                      >
+                        {[2024, 2025, 2026].map(year => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </Select>
+                    </Flex>
+                    
+                    <Button
+                      size="sm"
+                      leftIcon={<Icon as={FiPlus} />}
+                      colorScheme="blue"
+                      variant="outline"
+                    >
+                      Add Event
+                    </Button>
+                  </Flex>
+                  
+                  {/* Calendar Grid */}
+                  <Box overflowX="auto">
+                    <Grid 
+                      templateColumns="repeat(7, 1fr)" 
+                      gap={1}
+                      fontWeight="medium"
+                      textAlign="center"
+                      mb={2}
+                    >
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                        <Box key={day} p={2} fontWeight="bold" fontSize="sm" color="gray.400">
+                          {day}
+                        </Box>
+                      ))}
+                    </Grid>
+                    
+                    <Grid templateColumns="repeat(7, 1fr)" gap={1}>
+                      {calendarDays.map((dayData, index) => (
+                        <Box 
+                          key={index} 
+                          p={2} 
+                          bg={dayData.events.length > 0 ? "rgba(72, 187, 120, 0.1)" : "gray.800"}
+                          borderRadius="md"
+                          minH="100px"
+                          position="relative"
+                          border="1px solid"
+                          borderColor={dayData.events.length > 0 ? "green.400" : "transparent"}
+                          opacity={dayData.day ? 1 : 0.3}
+                        >
+                          {dayData.day && (
+                            <>
+                              <Text fontSize="sm" fontWeight="bold">
+                                {dayData.day}
+                              </Text>
+                              <VStack spacing={1} mt={1} align="stretch">
+                                {dayData.events.map(event => (
+                                  <Box 
+                                    key={event.id}
+                                    p={1}
+                                    bg="rgba(72, 187, 120, 0.2)"
+                                    borderRadius="sm"
+                                    fontSize="xs"
+                                    cursor="pointer"
+                                    _hover={{ bg: "rgba(72, 187, 120, 0.3)" }}
+                                    title={event.title}
+                                    onClick={() => toast({
+                                      title: event.title,
+                                      description: `${event.date} at ${event.time} • Speaker: ${event.speaker}`,
+                                      status: "info",
+                                      duration: 5000,
+                                      isClosable: true,
+                                    })}
+                                  >
+                                    <Text noOfLines={1}>{event.title}</Text>
+                                    <Text color="green.300">{event.time}</Text>
+                                  </Box>
+                                ))}
+                              </VStack>
+                            </>
+                          )}
+                        </Box>
+                      ))}
+                    </Grid>
+                  </Box>
+                  
+                  {/* Upcoming Events List */}
+                  <Box mt={8}>
+                    <Heading size="sm" mb={4}>Upcoming Events</Heading>
+                    <VStack spacing={4} align="stretch">
+                      {eventsData
+                        .filter(event => new Date(`${event.date}T${event.time}`).getTime() > new Date().getTime())
+                        .sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime())
+                        .slice(0, 3)
+                        .map(event => (
+                          <Box 
+                            key={event.id}
+                            p={4} 
+                            bg="whiteAlpha.100" 
+                            borderRadius="md"
+                            borderLeft="4px solid"
+                            borderColor="green.400"
+                          >
+                            <Heading size="sm" mb={2}>{event.title}</Heading>
+                            <Flex align="center" mb={2}>
+                              <Icon as={FiCalendar} mr={2} color="gray.400" />
+                              <Text fontSize="sm">
+                                {new Date(event.date).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })} at {event.time}
+                              </Text>
+                            </Flex>
+                            <Flex align="center" mb={3}>
+                              <Icon as={FiUsers} mr={2} color="gray.400" />
+                              <Text fontSize="sm">{event.attendees} attending</Text>
+                            </Flex>
+                            <Flex justify="space-between" align="center">
+                              <Text fontSize="xs" color="gray.400">
+                                Speaker: {event.speaker}
+                              </Text>
+                              <Button size="xs" colorScheme="green">RSVP</Button>
+                            </Flex>
+                          </Box>
+                        ))
+                      }
+                    </VStack>
+                  </Box>
                 </Box>
               </TabPanel>
 
@@ -888,6 +1139,139 @@ const CommunityPage: React.FC = () => {
           </Tabs>
         </Container>
       </Box>
+      
+      {/* Create Post Modal */}
+      <Modal isOpen={isPostModalOpen} onClose={onPostModalClose} size="lg">
+        <ModalOverlay backdropFilter="blur(3px)" />
+        <ModalContent bg="gray.800" borderRadius="xl" boxShadow="xl">
+          <ModalHeader borderBottomWidth="1px" borderColor="gray.700">Create a Post</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody py={4}>
+            <VStack spacing={4} align="stretch">
+              <FormControl>
+                <FormLabel fontSize="sm">Title</FormLabel>
+                <Input 
+                  placeholder="Post title" 
+                  value={postTitle} 
+                  onChange={e => setPostTitle(e.target.value)}
+                  bg="white"
+                  color="gray.800"
+                  borderColor="gray.300"
+                  _focus={{ borderColor: "blue.500" }}
+                />
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel fontSize="sm">Category</FormLabel>
+                <Select 
+                  value={postCategory} 
+                  onChange={e => setPostCategory(e.target.value)}
+                  bg="white"
+                  color="gray.800"
+                  borderColor="gray.300"
+                  _focus={{ borderColor: "blue.500" }}
+                >
+                  <option value="general">General Discussion</option>
+                  <option value="stocks">Stocks</option>
+                  <option value="crypto">Cryptocurrency</option>
+                  <option value="analysis">Technical Analysis</option>
+                  <option value="news">Market News</option>
+                </Select>
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel fontSize="sm">Content</FormLabel>
+                <Textarea 
+                  placeholder="Share your thoughts or questions..." 
+                  rows={6}
+                  value={postContent} 
+                  onChange={e => setPostContent(e.target.value)}
+                  bg="white"
+                  color="gray.800"
+                  borderColor="gray.300"
+                  _focus={{ borderColor: "blue.500" }}
+                />
+              </FormControl>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onPostModalClose}>
+              Cancel
+            </Button>
+            <Button colorScheme="green" onClick={handlePostSubmit} leftIcon={<FiSend />}>
+              Post
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      
+      {/* Find Friends Modal */}
+      <Modal isOpen={isFriendModalOpen} onClose={onFriendModalClose} size="md">
+        <ModalOverlay backdropFilter="blur(3px)" />
+        <ModalContent bg="gray.800" borderRadius="xl" boxShadow="xl">
+          <ModalHeader borderBottomWidth="1px" borderColor="gray.700">Find Friends</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody py={4}>
+            <VStack spacing={4} align="stretch">
+              <Box position="relative">
+                <Input 
+                  placeholder="Search by name or email" 
+                  value={friendSearch} 
+                  onChange={e => setFriendSearch(e.target.value)}
+                  pr="40px"
+                  bg="white"
+                  color="gray.800"
+                  borderColor="gray.300"
+                  _focus={{ borderColor: "blue.500" }}
+                />
+                <Icon 
+                  as={FiSearch} 
+                  position="absolute"
+                  right="12px"
+                  top="50%"
+                  transform="translateY(-50%)"
+                  color="gray.500"
+                />
+              </Box>
+              
+              <VStack mt={4} align="stretch" spacing={3}>
+                <Text fontSize="sm" color="gray.400">Suggested Connections</Text>
+                
+                {/* Mock suggested connections */}
+                {suggestedConnections.map((person) => (
+                  <Flex 
+                    key={person.id} 
+                    align="center" 
+                    justify="space-between"
+                    p={2}
+                    borderRadius="md"
+                    _hover={{ bg: 'gray.700' }}
+                  >
+                    <Flex align="center">
+                      <Avatar size="sm" src={person.avatar} name={person.name} mr={3} />
+                      <Box>
+                        <Text fontSize="sm" fontWeight="medium">{person.name}</Text>
+                        <Text fontSize="xs" color="gray.400">{person.badge}</Text>
+                      </Box>
+                    </Flex>
+                    <Button size="xs" leftIcon={<FiPlus />} colorScheme="green" variant="ghost">
+                      Connect
+                    </Button>
+                  </Flex>
+                ))}
+              </VStack>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onFriendModalClose}>
+              Cancel
+            </Button>
+            <Button colorScheme="green" onClick={handleFindFriend} leftIcon={<FiSearch />}>
+              Search
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };
@@ -900,4 +1284,4 @@ const MotionTr = motion(Tr);
 // Missing component from the Chakra UI import
 const Spacer = () => <Box flex="1" />;
 
-export default CommunityPage; 
+export default CommunityPage;

@@ -608,6 +608,7 @@ Consider this news data when providing your financial analysis and recommendatio
                 icon={isExpanded ? <FiMinimize /> : <FiMaximize />}
                 size="sm"
                 variant="ghost"
+                bg="white"
                 onClick={toggleExpand}
               />
               <IconButton
@@ -615,6 +616,7 @@ Consider this news data when providing your financial analysis and recommendatio
                 icon={<FiX />}
                 size="sm"
                 variant="ghost"
+                bg="white"
                 onClick={onClose}
               />
             </HStack>
@@ -711,6 +713,7 @@ Consider this news data when providing your financial analysis and recommendatio
                       variant="outline"
                       borderColor="rgba(255, 255, 255, 0.2)"
                       borderRadius="full"
+                      bg="white"
                       onClick={() => {
                         setInputValue(question);
                         inputRef.current?.focus();

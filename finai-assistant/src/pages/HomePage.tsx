@@ -218,6 +218,8 @@ const HomePage: React.FC = () => {
                     size="lg"
                     variant="outline"
                     className="button-3d"
+                    bg="gray.100"
+                    _hover={{ bg: "white" }}
                     fontSize="md"
                     py={7}
                     px={8}

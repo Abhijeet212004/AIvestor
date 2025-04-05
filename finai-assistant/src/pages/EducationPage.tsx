@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Container, Heading, Text, Flex, Button, Grid, GridItem, VStack, HStack, Icon, Progress, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton, useDisclosure, Tag, Radio, RadioGroup, Stack, Image, SimpleGrid, Spinner, Link, InputGroup, InputLeftElement, Input, Select } from '@chakra-ui/react';
+import { Box, Container, Heading, Text, Flex, Button, Grid, GridItem, VStack, HStack, Icon, Progress, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton, useDisclosure, Tag, Radio, RadioGroup, Stack, Image, SimpleGrid, Spinner, Link, InputGroup, InputLeftElement, Input, Select, useToast } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { FiAward, FiBookOpen, FiCheck, FiCheckCircle, FiClock, FiDollarSign, FiExternalLink, FiLayers, FiPercent, FiPieChart, FiPlay, FiSearch, FiTrendingUp, FiVideo, FiX } from 'react-icons/fi';
 import Navigation from '../components/Navigation';
 import AnimatedCard from '../components/AnimatedCard';
 import ProtectedFeature from '../components/ProtectedFeature';
-import { getPersonalizedRecommendations, Video } from '../services/youtubeServices';
+import { getPersonalizedRecommendations, getEducationalVideos, Video } from '../services/youtubeServices';
 
 const MotionBox = motion(Box);
 
@@ -16,9 +16,12 @@ const EducationPage: React.FC = () => {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({});
   const [quizResults, setQuizResults] = useState<{score: number, total: number} | null>(null);
   const [recommendedVideos, setRecommendedVideos] = useState<Video[]>([]);
-  const [isLoadingVideos, setIsLoadingVideos] = useState(false);
+  const [isLoadingVideos, setIsLoadingVideos] = useState(true);
   const [userLevel, setUserLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced'>('Beginner');
+  const [sortType, setSortType] = useState<'relevance' | 'date'>('relevance');
+  const [lastSearchTerm, setLastSearchTerm] = useState<string>('');
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const toast = useToast();
 
   // Mock courses data
   const courses = [
@@ -191,20 +194,138 @@ const EducationPage: React.FC = () => {
   };
 
   useEffect(() => {
-    const fetchRecommendedVideos = async () => {
+    const loadRecommendedVideos = async () => {
+      console.log('Loading recommended videos for level:', userLevel);
+      setIsLoadingVideos(true);
+      
       try {
-        setIsLoadingVideos(true);
-        const recommendations = await getPersonalizedRecommendations(userLevel);
-        setRecommendedVideos(recommendations);
+        // First try to get personalized recommendations
+        const videos = await getPersonalizedRecommendations(userLevel);
+        console.log(`Retrieved ${videos.length} videos successfully`);
+        
+        if (videos && videos.length > 0) {
+          const sortedVideos = sortVideos(videos, sortType);
+          setRecommendedVideos(sortedVideos);
+          
+          if (videos.some(video => video.id.includes('beginner') || video.id.includes('intermediate') || video.id.includes('advanced'))) {
+            console.log('Using mock data due to API limitations');
+            toast({
+              title: "Using offline videos",
+              description: "We're currently showing cached videos due to API limitations.",
+              status: "info",
+              duration: 3000,
+              isClosable: true,
+            });
+          }
+        } else {
+          console.error('No videos returned from API');
+          toast({
+            title: "Could not load videos",
+            description: "There was an issue loading recommended videos. Please try again later.",
+            status: "warning",
+            duration: 3000,
+            isClosable: true,
+          });
+        }
       } catch (error) {
         console.error("Error fetching video recommendations:", error);
+        toast({
+          title: "Error loading videos",
+          description: "An error occurred while loading recommended videos. Please try again later.",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
       } finally {
         setIsLoadingVideos(false);
       }
     };
     
-    fetchRecommendedVideos();
-  }, [userLevel]);
+    loadRecommendedVideos();
+  }, [userLevel, toast]);
+
+  // Sort videos based on selected criterion
+  const sortVideos = (videos: Video[], sortType: 'relevance' | 'date') => {
+    return [...videos].sort((a, b) => {
+      if (sortType === 'relevance') {
+        return b.levelRelevance - a.levelRelevance;
+      } else {
+        return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+      }
+    });
+  };
+
+  // Handle search functionality with debounce
+  const handleSearch = (searchTerm: string) => {
+    setLastSearchTerm(searchTerm);
+    
+    if (!searchTerm) {
+      // Reset to default videos for current level
+      setIsLoadingVideos(true);
+      getPersonalizedRecommendations(userLevel)
+        .then(videos => {
+          const sortedVideos = sortVideos(videos, sortType);
+          setRecommendedVideos(sortedVideos);
+          setIsLoadingVideos(false);
+        })
+        .catch(error => {
+          console.error("Error resetting videos:", error);
+          setIsLoadingVideos(false);
+          toast({
+            title: "Error loading videos",
+            description: "Could not load default videos. Please try again later.",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+          });
+        });
+      return;
+    }
+    
+    // Set loading state
+    setIsLoadingVideos(true);
+    console.log(`Searching for videos with term: ${searchTerm}`);
+    
+    // Search with the user's term
+    getPersonalizedRecommendations(userLevel, [searchTerm])
+      .then(videos => {
+        console.log(`Found ${videos.length} videos for search: ${searchTerm}`);
+        const sortedVideos = sortVideos(videos, sortType);
+        setRecommendedVideos(sortedVideos);
+        
+        if (videos.length === 0) {
+          toast({
+            title: "No results found",
+            description: "Try different search terms or select a different skill level.",
+            status: "info",
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+      })
+      .catch(error => {
+        console.error("Error searching videos:", error);
+        toast({
+          title: "Search error",
+          description: "There was an issue with your search. Please try different keywords.",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      })
+      .finally(() => {
+        setIsLoadingVideos(false);
+      });
+  };
+
+  // Handle sorting change
+  const handleSortChange = (newSortType: 'relevance' | 'date') => {
+    setSortType(newSortType);
+    
+    // Re-sort current videos without making a new API call
+    const sortedVideos = sortVideos(recommendedVideos, newSortType);
+    setRecommendedVideos(sortedVideos);
+  };
 
   // Header gradient for education page
   const educationGradient = "linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%)";
@@ -437,32 +558,15 @@ const EducationPage: React.FC = () => {
                   <Input 
                     placeholder="Search for specific topics..."
                     borderColor="whiteAlpha.300"
+                    bg="white"
+                    color="gray.800"
                     _hover={{ borderColor: "whiteAlpha.400" }}
                     onChange={(e) => {
                       const searchTerm = e.target.value.trim();
-                      // If search is empty, just use the user level
-                      if (!searchTerm) {
-                        const fetchRecommendations = async () => {
-                          setIsLoadingVideos(true);
-                          const recommendations = await getPersonalizedRecommendations(userLevel);
-                          setRecommendedVideos(recommendations);
-                          setIsLoadingVideos(false);
-                        };
-                        fetchRecommendations();
-                        return;
-                      }
                       
-                      // Debounce the search to avoid too many API calls
-                      const debounceTimer = setTimeout(async () => {
-                        setIsLoadingVideos(true);
-                        try {
-                          const recommendations = await getPersonalizedRecommendations(userLevel, [searchTerm]);
-                          setRecommendedVideos(recommendations);
-                        } catch (error) {
-                          console.error("Error searching videos:", error);
-                        } finally {
-                          setIsLoadingVideos(false);
-                        }
+                      // Debounce search
+                      const debounceTimer = setTimeout(() => {
+                        handleSearch(searchTerm);
                       }, 500);
                       
                       return () => clearTimeout(debounceTimer);
@@ -473,20 +577,12 @@ const EducationPage: React.FC = () => {
               <Select 
                 width="180px" 
                 borderColor="whiteAlpha.300"
+                bg="white"
+                color="gray.800"
                 _hover={{ borderColor: "whiteAlpha.400" }}
-                defaultValue="relevance"
+                defaultValue={sortType}
                 onChange={(e) => {
-                  // Sort the videos based on selection
-                  const sortType = e.target.value;
-                  const sortedVideos = [...recommendedVideos].sort((a, b) => {
-                    if (sortType === 'relevance') {
-                      return b.levelRelevance - a.levelRelevance;
-                    } else if (sortType === 'date') {
-                      return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-                    }
-                    return 0;
-                  });
-                  setRecommendedVideos(sortedVideos);
+                  handleSortChange(e.target.value as 'relevance' | 'date');
                 }}
               >
                 <option value="relevance">Sort by Relevance</option>
@@ -496,24 +592,52 @@ const EducationPage: React.FC = () => {
           </Flex>
           
           {isLoadingVideos ? (
-            <Flex justify="center" align="center" h="200px">
-              <Spinner size="xl" color="blue.400" />
-              <Text ml={4} fontSize="lg">Loading personalized recommendations...</Text>
+            <Flex justify="center" align="center" h="200px" direction="column">
+              <Spinner size="xl" color="blue.400" thickness="4px" mb={4} />
+              <Text fontSize="lg">Loading {lastSearchTerm ? `videos for "${lastSearchTerm}"` : `${userLevel} level videos`}...</Text>
             </Flex>
-          ) : recommendedVideos.length > 0 ? (
+          ) : recommendedVideos && recommendedVideos.length > 0 ? (
             <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6} mb={10}>
               {recommendedVideos.map((video, index) => (
-                <Link key={index} href={video.url} isExternal _hover={{ textDecoration: 'none' }}>
+                <Link key={`${video.id}-${index}`} href={video.url} isExternal _hover={{ textDecoration: 'none' }}>
                   <AnimatedCard p={0} overflow="hidden" cursor="pointer" hoverEffect="lift">
-                    <Image src={video.thumbnail} w="full" h="150px" objectFit="cover" borderTopRadius="md" />
+                    <Box position="relative">
+                      <Image 
+                        src={video.thumbnail} 
+                        w="full" 
+                        h="150px" 
+                        objectFit="cover" 
+                        borderTopRadius="md"
+                        fallbackSrc="https://via.placeholder.com/320x180.png?text=Video+Thumbnail" 
+                      />
+                      <Flex 
+                        position="absolute" 
+                        top={2} 
+                        right={2} 
+                        bg="rgba(0,0,0,0.7)" 
+                        color="white" 
+                        borderRadius="md" 
+                        px={2} 
+                        py={1} 
+                        alignItems="center"
+                        fontSize="xs"
+                      >
+                        <Icon as={FiPlay} mr={1} />
+                        YouTube
+                      </Flex>
+                    </Box>
                     <Box p={4}>
                       <Heading size="sm" mb={2} noOfLines={2}>{video.title}</Heading>
                       <Text fontSize="sm" color="gray.300" noOfLines={2}>{video.description}</Text>
-                      <HStack mt={3}>
-                        <Icon as={FiPlay} color="blue.400" />
-                        <Text fontSize="xs" color="blue.400">Watch Video</Text>
-                        <Icon as={FiExternalLink} color="blue.400" ml="auto" />
-                      </HStack>
+                      <Flex mt={3} justifyContent="space-between" alignItems="center">
+                        <Text fontSize="xs" color="gray.400">
+                          {video.channelTitle}
+                        </Text>
+                        <HStack>
+                          <Icon as={FiPlay} color="blue.400" />
+                          <Text fontSize="xs" color="blue.400">Watch</Text>
+                        </HStack>
+                      </Flex>
                     </Box>
                   </AnimatedCard>
                 </Link>
@@ -522,8 +646,22 @@ const EducationPage: React.FC = () => {
           ) : (
             <Box textAlign="center" p={6} bg="gray.800" borderRadius="md" mb={10}>
               <Icon as={FiVideo} boxSize={10} color="gray.500" mb={4} />
-              <Heading size="md" mb={2}>No recommended videos found</Heading>
-              <Text>Try changing your experience level or check back later</Text>
+              <Heading size="md" mb={2}>No videos found</Heading>
+              <Text mb={4}>
+                {lastSearchTerm 
+                  ? `No results for "${lastSearchTerm}". Try different keywords.` 
+                  : "Try changing your experience level or check back later."
+                }
+              </Text>
+              {lastSearchTerm && (
+                <Button 
+                  colorScheme="blue" 
+                  leftIcon={<Icon as={FiBookOpen} />}
+                  onClick={() => handleSearch('')}
+                >
+                  Show All {userLevel} Videos
+                </Button>
+              )}
             </Box>
           )}
 
