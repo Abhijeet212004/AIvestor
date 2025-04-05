@@ -8,7 +8,7 @@ import {
 import { 
   FiFileText, FiBell, FiTrendingUp, FiClock, FiAlertCircle, 
   FiExternalLink, FiFilter, FiRefreshCw, FiStar, FiSave, FiX, 
-  FiSearch, FiPlus, FiInfo
+  FiSearch, FiPlus, FiInfo, FiChevronDown
 } from 'react-icons/fi';
 import { format } from 'date-fns';
 import Navigation from '../components/Navigation';
@@ -559,25 +559,45 @@ const NewsPage: React.FC = () => {
                   <Icon as={FiFileText} boxSize={5} mr={2} color="blue.400" />
                   Financial News
                 </Heading>
-                <Flex align="center" gap={2}>
-                  <Icon as={FiFilter} boxSize={4} color="gray.400" />
-                  <Text fontSize="sm" color="gray.400">Category:</Text>
-                  <Select
-                    bg="gray.700"
-                    border="1px solid"
+                <Flex align="center" gap={3}>
+                  <Box 
+                    position="relative"
+                    bg="gray.800"
+                    borderRadius="md"
+                    p={1}
+                    pl={3}
+                    borderWidth="1px"
                     borderColor="gray.600"
-                    size="sm"
-                    rounded="lg"
-                    w="140px"
-                    value={selectedCategory}
-                    onChange={(e) => handleCategoryChange(e.target.value)}
                   >
-                    {categories.map(category => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </Select>
+                    <Flex align="center">
+                      <Icon as={FiFilter} boxSize={4} color="blue.400" mr={2} />
+                      <Text color="gray.300" fontSize="sm" fontWeight="medium" mr={2}>Category:</Text>
+                      <Select
+                        value={selectedCategory}
+                        onChange={(e) => handleCategoryChange(e.target.value)}
+                        bg="transparent"
+                        border="none"
+                        color="white"
+                        fontWeight="medium"
+                        size="sm"
+                        w="120px"
+                        _focus={{ boxShadow: "none" }}
+                        icon={<Icon as={FiChevronDown} color="blue.400" />}
+                        sx={{
+                          "& option": {
+                            bg: "gray.800",
+                            color: "white"
+                          }
+                        }}
+                      >
+                        {categories.map(category => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </Flex>
+                  </Box>
                 </Flex>
               </Flex>
 
