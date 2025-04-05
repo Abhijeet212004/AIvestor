@@ -605,72 +605,121 @@ const NewsPage: React.FC = () => {
                   </Button>
                 </Flex>
               ) : (
-                <VStack spacing={6} maxH="70vh" overflow="auto" pr={2} align="stretch">
+                <Box maxH="80vh" overflow="auto" pr={2}>
                   {news.map((item) => (
-                    <AnimatedCard 
-                      key={item.id} 
-                      bg="gray.700/30" 
-                      p={4} 
-                      _hover={{ bg: 'gray.700/40' }} 
-                      transition="all 0.2s"
-                      hoverEffect="lift"
+                    <Box 
+                      key={item.id}
+                      bg="rgba(26, 32, 44, 0.5)"
+                      borderRadius="lg"
+                      boxShadow="0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08)"
+                      mb={8}
+                      overflow="hidden"
+                      transition="all 0.3s"
+                      _hover={{ 
+                        transform: "translateY(-4px)",
+                        boxShadow: "0 10px 15px rgba(0, 0, 0, 0.2)",
+                      }}
                     >
-                      <Flex>
-                        {item.image && (
-                          <Box 
-                            w="96px" 
-                            h="96px" 
-                            bg="gray.800" 
-                            rounded="md" 
-                            overflow="hidden" 
-                            mr={4} 
-                            flexShrink={0}
-                          >
-                            <Image
-                              src={item.image}
-                              alt={item.headline}
-                              w="full"
-                              h="full"
-                              objectFit="cover"
-                              fallbackSrc="https://via.placeholder.com/150?text=News"
-                            />
-                          </Box>
-                        )}
-                        <Box flex="1">
-                          <Heading size="sm" color="blue.300" mb={1}>{item.headline}</Heading>
-                          <Text color="gray.300" fontSize="sm" noOfLines={2}>{item.summary}</Text>
-                          <Flex justify="space-between" align="center" mt={2}>
-                            <Text fontSize="xs" color="gray.400" display="flex" alignItems="center">
-                              <Icon as={FiClock} boxSize={3} mr={1} />
-                              {format(new Date(item.datetime * 1000), 'MMM d, h:mm a')}
+                      {/* News Title - Full Width */}
+                      <Box 
+                        bgGradient="linear(to-r, gray.700, gray.800)" 
+                        py={5} 
+                        px={6}
+                        borderBottom="1px" 
+                        borderColor="gray.700"
+                      >
+                        <Heading 
+                          fontSize="xl" 
+                          color="white" 
+                          fontWeight="600"
+                        >
+                          {item.headline}
+                        </Heading>
+                      </Box>
+                      
+                      {/* Main Content Area */}
+                      <Box p={6}>
+                        {/* Two Column Layout for Content */}
+                        <Grid templateColumns={{ base: "1fr", md: "auto 1fr" }} gap={6}>
+                          {/* Left Column - Image */}
+                          {item.image && (
+                            <GridItem>
+                              <Box
+                                width={{ base: "100%", md: "240px" }}
+                                height={{ base: "200px", md: "180px" }}
+                                borderRadius="md"
+                                overflow="hidden"
+                                boxShadow="md"
+                                border="1px solid"
+                                borderColor="gray.700"
+                              >
+                                <Image
+                                  src={item.image}
+                                  alt={item.headline}
+                                  width="100%"
+                                  height="100%"
+                                  objectFit="cover"
+                                  fallbackSrc="https://via.placeholder.com/300x200?text=News"
+                                />
+                              </Box>
+                            </GridItem>
+                          )}
+                          
+                          {/* Right Column - Content */}
+                          <GridItem>
+                            <Text
+                              fontSize="md"
+                              color="gray.300"
+                              mb={5}
+                              lineHeight="tall"
+                            >
+                              {item.summary}
                             </Text>
-                            <Flex align="center" gap={2}>
-                              <Badge bg="gray.700" color="gray.300" fontSize="xs" px={2} py={0.5} rounded="full">
-                                {item.source}
-                              </Badge>
+                            
+                            {/* Source and Date */}
+                            <Flex 
+                              justify="space-between" 
+                              align="center" 
+                              pt={2}
+                              borderTop="1px" 
+                              borderColor="gray.700"
+                              flexWrap={{ base: "wrap", md: "nowrap" }}
+                              gap={3}
+                            >
+                              <Flex align="center" gap={2}>
+                                <Badge 
+                                  colorScheme="blue" 
+                                  py={1} 
+                                  px={3} 
+                                  borderRadius="full"
+                                  fontWeight="medium"
+                                >
+                                  {item.source}
+                                </Badge>
+                                <Text fontSize="sm" color="gray.400" display="flex" alignItems="center">
+                                  <Icon as={FiClock} boxSize={3} mr={1} />
+                                  {format(new Date(item.datetime * 1000), 'MMM d, h:mm a')}
+                                </Text>
+                              </Flex>
+                              
                               <Button
                                 as="a"
                                 href={item.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                color="blue.400"
-                                variant="link"
-                                _hover={{ color: 'blue.300' }}
-                                fontSize="sm"
-                                display="flex"
-                                alignItems="center"
-                                gap={1}
+                                size="md"
+                                colorScheme="blue"
+                                rightIcon={<Icon as={FiExternalLink} />}
                               >
-                                <Icon as={FiExternalLink} boxSize={3} />
-                                Read More
+                                Read Full Article
                               </Button>
                             </Flex>
-                          </Flex>
-                        </Box>
-                      </Flex>
-                    </AnimatedCard>
+                          </GridItem>
+                        </Grid>
+                      </Box>
+                    </Box>
                   ))}
-                </VStack>
+                </Box>
               )}
             </AnimatedCard>
           </GridItem>
