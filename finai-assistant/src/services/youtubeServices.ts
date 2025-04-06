@@ -2,6 +2,41 @@
 const YOUTUBE_API_KEY = process.env.REACT_APP_YOUTUBE_API_KEY || 'AIzaSyCVLt6lrrgZWhDofV_w9CqniOmb0nFm0Ag'; // Get from environment variable
 const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
+// Add function to check API key validity
+const checkApiKeyValidity = async (): Promise<boolean> => {
+  try {
+    console.log('Checking YouTube API key validity...');
+    // Make a simple API call to test the key
+    const testUrl = `${YOUTUBE_API_BASE_URL}/search?part=snippet&q=test&maxResults=1&key=${YOUTUBE_API_KEY}`;
+    const response = await fetch(testUrl);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('YouTube API key validation failed:', errorData);
+      
+      if (errorData?.error?.errors) {
+        const error = errorData.error.errors[0];
+        if (error.reason === 'quotaExceeded') {
+          console.error('YouTube API quota exceeded. Please try again tomorrow or use a different API key.');
+          return false;
+        } else if (error.reason === 'keyInvalid') {
+          console.error('YouTube API key is invalid. Please check your key in the .env file.');
+          return false;
+        }
+      }
+      
+      console.error(`API key check failed with status: ${response.status}`);
+      return false;
+    }
+    
+    console.log('YouTube API key is valid and working.');
+    return true;
+  } catch (error) {
+    console.error('Error checking API key validity:', error);
+    return false;
+  }
+};
+
 // Define skill level-specific topics and terms for more targeted results
 const skillLevelTopics = {
   Beginner: {
@@ -102,6 +137,13 @@ export const getEducationalVideos = async (
   console.log(`Searching YouTube for: ${combinedQuery}`);
   
   try {
+    // First check if the API key is valid
+    const isApiKeyValid = await checkApiKeyValidity();
+    if (!isApiKeyValid) {
+      console.error('Skipping YouTube API call due to invalid API key');
+      return [];
+    }
+    
     // Add exclusion terms to avoid content for inappropriate levels  
     const excludeTerms = levelConfig.excludeTerms ? `&excludeTerms=${levelConfig.excludeTerms}` : '';
     
@@ -112,8 +154,15 @@ export const getEducationalVideos = async (
     const response = await fetch(apiUrl);
     
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`YouTube API error (${response.status}): ${errorText}`);
+      const errorData = await response.json();
+      console.error(`YouTube API error (${response.status}):`, errorData);
+      
+      // Check for specific error types
+      if (errorData?.error?.errors) {
+        const error = errorData.error.errors[0];
+        console.error(`YouTube API error reason: ${error.reason}, message: ${error.message}`);
+      }
+      
       throw new Error(`Failed to fetch videos from YouTube API: ${response.status}`);
     }
     
@@ -176,7 +225,7 @@ export const getEducationalVideos = async (
       .sort((a, b) => b.levelRelevance - a.levelRelevance)
       .slice(0, maxResults);
     
-    console.log(`Returning ${videos.length} filtered videos`);
+    console.log(`Returning ${videos.length} filtered videos from YouTube API`);
     return videos;
   } catch (error) {
     console.error('Error fetching educational videos:', error);
@@ -284,7 +333,22 @@ export const getPersonalizedRecommendations = async (
       console.log(`Created personalized query: ${personalizedQuery}`);
     }
     
+    // First, verify the API key
+    const isApiKeyValid = await checkApiKeyValidity();
+    if (!isApiKeyValid) {
+      console.warn('API key validation failed, skipping main API call and trying curated playlists');
+      const playlistVideos = await getCuratedEducationalVideos(level);
+      
+      if (playlistVideos && playlistVideos.length > 0) {
+        return playlistVideos;
+      }
+      
+      console.warn('Curated playlists also failed, falling back to mock data');
+      return getMockVideos(level);
+    }
+    
     // First try regular search API
+    console.log('Attempting to fetch videos from YouTube Search API...');
     let videos = await getEducationalVideos(level, personalizedQuery, 5);
     
     // If no videos found, try curated playlists
@@ -303,9 +367,15 @@ export const getPersonalizedRecommendations = async (
     if (!videos || videos.length === 0) {
       console.log('All API methods failed, using mock data');
       videos = getMockVideos(level);
+    } else {
+      console.log(`Successfully retrieved ${videos.length} real videos from YouTube`);
     }
     
-    console.log(`Successfully retrieved ${videos.length} videos`);
+    // Check if we're using mock data and log it
+    if (videos.some(video => video.id.includes('beginner') || video.id.includes('intermediate') || video.id.includes('advanced'))) {
+      console.warn('WARNING: Using mock video data. Please check your YouTube API key and quota.');
+    }
+    
     return videos;
   } catch (error) {
     console.error('Error getting personalized recommendations:', error);

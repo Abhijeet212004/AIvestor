@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Container, Grid, GridItem, Heading, Text, Flex, Button, HStack, VStack, Icon, SimpleGrid, Avatar, AvatarBadge, Badge, Tag, Tabs, TabList, TabPanels, Tab, TabPanel, Table, Thead, Tbody, Tr, Th, Td, Progress, Divider, Menu, MenuButton, MenuList, MenuItem, useColorModeValue, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, useDisclosure, Input, Textarea, Select, useToast, Image, FormControl, FormLabel } from '@chakra-ui/react';
+import { Box, Container, Grid, GridItem, Heading, Text, Flex, Button, HStack, VStack, Icon, SimpleGrid, Avatar, Tag, Tabs, TabList, TabPanels, Tab, TabPanel, Table, Thead, Tbody, Tr, Th, Td, Progress, Divider, Menu, MenuButton, MenuList, MenuItem, useColorModeValue, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton, useDisclosure, Input, Textarea, Select, useToast, Image, FormControl, FormLabel } from '@chakra-ui/react';
 import { motion, useAnimation } from 'framer-motion';
 import { FiUsers, FiAward, FiTrendingUp, FiMessageSquare, FiThumbsUp, FiCalendar, FiBriefcase, FiHeart, FiClock, FiChevronDown, FiCheck, FiMoreVertical, FiStar, FiShield, FiTrendingUp as FiTrendingUpIcon, FiDollarSign, FiSearch, FiSend, FiPlus, FiX } from 'react-icons/fi';
 import Navigation from '../components/Navigation';
@@ -41,7 +41,6 @@ interface CalendarDay {
 interface SuggestedConnection {
   id: number;
   name: string;
-  badge: string;
   avatar: string;
 }
 
@@ -52,7 +51,6 @@ interface LeaderboardEntry {
   points: number;
   rank: number;
   returnRate: number;
-  badge: string;
   streak: number;
   topHoldings: string[];
 }
@@ -138,9 +136,9 @@ const CommunityPage: React.FC = () => {
   
   // Suggested connections
   const suggestedConnections: SuggestedConnection[] = [
-    { id: 1, name: 'Priya Patel', badge: 'Platinum Investor', avatar: 'https://randomuser.me/api/portraits/women/2.jpg' },
-    { id: 2, name: 'Rahul Sharma', badge: 'Diamond Investor', avatar: 'https://randomuser.me/api/portraits/men/1.jpg' },
-    { id: 3, name: 'Aisha Khan', badge: 'Silver Investor', avatar: 'https://randomuser.me/api/portraits/women/4.jpg' }
+    { id: 1, name: 'Priya Patel', avatar: 'https://randomuser.me/api/portraits/women/2.jpg' },
+    { id: 2, name: 'Rahul Sharma', avatar: 'https://randomuser.me/api/portraits/men/1.jpg' },
+    { id: 3, name: 'Aisha Khan', avatar: 'https://randomuser.me/api/portraits/women/4.jpg' }
   ];
   
   // Leaderboard data
@@ -152,7 +150,6 @@ const CommunityPage: React.FC = () => {
       points: 8750, 
       rank: 1, 
       returnRate: 18.42, 
-      badge: 'Diamond Investor', 
       streak: 42,
       topHoldings: ['AAPL', 'MSFT', 'AMZN']
     },
@@ -163,7 +160,6 @@ const CommunityPage: React.FC = () => {
       points: 7620, 
       rank: 2, 
       returnRate: 16.38, 
-      badge: 'Platinum Investor',
       streak: 28,
       topHoldings: ['GOOGL', 'TSLA', 'NFLX']
     },
@@ -174,7 +170,6 @@ const CommunityPage: React.FC = () => {
       points: 6840, 
       rank: 3, 
       returnRate: 15.12, 
-      badge: 'Gold Investor',
       streak: 19,
       topHoldings: ['NVDA', 'AMZN', 'JPM']
     },
@@ -185,7 +180,6 @@ const CommunityPage: React.FC = () => {
       points: 5950, 
       rank: 4, 
       returnRate: 14.75, 
-      badge: 'Silver Investor',
       streak: 14,
       topHoldings: ['META', 'AAPL', 'MSFT']
     },
@@ -196,14 +190,13 @@ const CommunityPage: React.FC = () => {
       points: 4980, 
       rank: 5, 
       returnRate: 13.40, 
-      badge: 'Bronze Investor',
       streak: 10,
       topHoldings: ['TSLA', 'GOOGL', 'NFLX']
     }
   ];
   
   // Community posts data
-  const communityPosts: CommunityPost[] = [
+  const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>([
     {
       id: 1,
       user: leaderboardData[0], // Rahul Sharma
@@ -237,7 +230,7 @@ const CommunityPage: React.FC = () => {
       comments: 19,
       tags: ['Banking Sector', 'Financial Analysis', 'Policy Impact']
     }
-  ];
+  ]);
   
   // Calendar view state
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
@@ -259,6 +252,31 @@ const CommunityPage: React.FC = () => {
       });
       return;
     }
+    
+    // Create a new post with current user information
+    const newPost: CommunityPost = {
+      id: communityPosts.length + 1,
+      user: {
+        id: currentUser ? parseInt(currentUser.uid.substring(0, 8), 16) % 1000 : 0, // Convert string uid to a numeric id
+        name: userProfile?.displayName || 'You', // Use displayName from UserProfile
+        avatar: userProfile?.photoURL || 'https://randomuser.me/api/portraits/lego/1.jpg',
+        points: 4280,
+        rank: 87,
+        returnRate: 11.2,
+        streak: 7,
+        topHoldings: ['AAPL', 'MSFT', 'AMZN']
+      },
+      title: postTitle,
+      content: postContent,
+      category: postCategory,
+      timestamp: 'Just now',
+      likes: 0,
+      comments: 0,
+      tags: [postCategory]
+    };
+    
+    // Add the new post to the beginning of the array
+    setCommunityPosts([newPost, ...communityPosts]);
     
     toast({
       title: "Post created!",
@@ -293,7 +311,6 @@ const CommunityPage: React.FC = () => {
   const userReturn = 11.2;
   const userRank = 87;
   const userStreak = 7;
-  const userBadge = 'Silver Investor';
   
   // Generate calendar dates for the selected month
   const getDaysInMonth = (year: number, month: number): number => {
@@ -433,9 +450,7 @@ const CommunityPage: React.FC = () => {
                         src={userProfile?.photoURL || "https://bit.ly/broken-link"} 
                         mr={6}
                         name={userProfile?.displayName || "User"}
-                      >
-                        <AvatarBadge boxSize="1.25em" bg={accentColor} />
-                      </Avatar>
+                      />
                     </MotionBox>
                     <Box
                       position="absolute"
@@ -463,15 +478,6 @@ const CommunityPage: React.FC = () => {
                       Welcome, {userProfile?.displayName?.split(' ')[0] || 'Investor'}!
                     </MotionHeading>
                     <HStack mt={2}>
-                      <Badge 
-                        px={2} 
-                        py={1} 
-                        borderRadius="full" 
-                        bgGradient={goldGradient}
-                        color="gray.800"
-                      >
-                        {userBadge}
-                      </Badge>
                       <Text fontSize="sm" color="gray.300">Rank #{userRank}</Text>
                     </HStack>
                     <HStack mt={3}>
@@ -666,17 +672,11 @@ const CommunityPage: React.FC = () => {
                               <Td>
                                 <Flex align="center">
                                   <Avatar size="sm" src={entry.avatar} mr={3}>
-                                    {entry.rank <= 3 && (
-                                      <AvatarBadge boxSize="1.25em" bg="yellow.500" borderColor="darkBlue.800">
-                                        <Icon as={FiAward} color="white" boxSize="0.75em" />
-                                      </AvatarBadge>
-                                    )}
                                   </Avatar>
                                   <Box>
                                     <Text fontWeight="medium">{entry.name}</Text>
                                     <Flex align="center">
-                                      <Badge mr={2} colorScheme="purple">{entry.badge}</Badge>
-                                      <Text fontSize="xs" color="gray.400">{entry.streak} day streak</Text>
+                                      <Text fontSize="xs" color="gray.400">{entry.points} points</Text>
                                     </Flex>
                                   </Box>
                                 </Flex>
@@ -766,29 +766,6 @@ const CommunityPage: React.FC = () => {
                           </Flex>
                         </VStack>
                       </Box>
-                      
-                      <Box className="glass-card" p={6} w="full">
-                        <Heading size="md" mb={4}>Trending Topics</Heading>
-                        <VStack spacing={2} align="stretch">
-                          {[1, 2, 3, 4, 5].map((topic, index) => (
-                            <Flex 
-                              key={index} 
-                              justify="space-between" 
-                              align="center" 
-                              p={3} 
-                              bg="whiteAlpha.100" 
-                              borderRadius="md"
-                              cursor="pointer"
-                              _hover={{ bg: "whiteAlpha.200" }}
-                            >
-                              <Flex align="center">
-                                <Text fontSize="sm" fontWeight="medium">#{topic}</Text>
-                              </Flex>
-                              <Text fontSize="xs" color="gray.400">342 posts</Text>
-                            </Flex>
-                          ))}
-                        </VStack>
-                      </Box>
                     </VStack>
                   </GridItem>
                 </Grid>
@@ -824,16 +801,10 @@ const CommunityPage: React.FC = () => {
                         <AnimatedCard key={post.id} p={6} delay={post.id * 0.1}>
                           <HStack spacing={4} mb={4}>
                             <Avatar size="md" src={post.user.avatar} mr={3}>
-                              {post.user.rank <= 2 && (
-                                <AvatarBadge boxSize="1.25em" bg="purple.500" borderColor="darkBlue.800">
-                                  <Icon as={FiStar} color="white" boxSize="0.75em" />
-                                </AvatarBadge>
-                              )}
                             </Avatar>
                             <Box>
                               <Text fontWeight="medium">{post.user.name}</Text>
                               <Flex align="center">
-                                <Badge mr={2} colorScheme="purple">{post.user.badge}</Badge>
                                 <Text fontSize="xs" color="gray.400">{post.timestamp}</Text>
                               </Flex>
                             </Box>
@@ -846,7 +817,7 @@ const CommunityPage: React.FC = () => {
                           
                           <HStack mb={4} wrap="wrap" spacing={2}>
                             {post.tags.map((tag, index) => (
-                              <Tag key={index} size="sm" colorScheme="gray">#{tag.replace(/\s/g, '')}</Tag>
+                              <Tag size="sm" key={index}>{tag}</Tag>
                             ))}
                           </HStack>
                           
@@ -1251,7 +1222,6 @@ const CommunityPage: React.FC = () => {
                       <Avatar size="sm" src={person.avatar} name={person.name} mr={3} />
                       <Box>
                         <Text fontSize="sm" fontWeight="medium">{person.name}</Text>
-                        <Text fontSize="xs" color="gray.400">{person.badge}</Text>
                       </Box>
                     </Flex>
                     <Button size="xs" leftIcon={<FiPlus />} colorScheme="green" variant="ghost">

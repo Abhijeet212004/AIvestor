@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { Box, Container, Grid, GridItem, Heading, Text, Flex, Button, HStack, VStack, Icon, SimpleGrid, Slider, SliderTrack, SliderFilledTrack, SliderThumb, Select, Badge, Avatar, Divider, Progress } from '@chakra-ui/react';
+import React, { useState, useEffect } from 'react';
+import { Box, Container, Grid, GridItem, Heading, Text, Flex, Button, HStack, VStack, Icon, SimpleGrid, Slider, SliderTrack, SliderFilledTrack, SliderThumb, Select, Badge, Avatar, Divider, Progress, Spinner, useToast } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 import { FiFilter, FiStar, FiDollarSign, FiTrendingUp, FiShield, FiBarChart2, FiInfo, FiExternalLink, FiHeart, FiCompass } from 'react-icons/fi';
 import Navigation from '../components/Navigation';
 import AnimatedCard from '../components/AnimatedCard';
 import StockChart from '../components/StockChart';
 import ProtectedFeature from '../components/ProtectedFeature';
+import { getTrendingStocks, getMarketNews, TrendingStock, getIndianTrendingStocks, getIndianMarketNews, CURRENCY_SYMBOL } from '../services/finnhubService';
 
 const MotionBox = motion(Box);
 const MotionFlex = motion(Flex);
@@ -15,139 +16,125 @@ const DiscoveryPage: React.FC = () => {
   const [investmentType, setInvestmentType] = useState<string>('all');
   const [investmentTerm, setInvestmentTerm] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [trendingStocks, setTrendingStocks] = useState<TrendingStock[]>([]);
+  const [isLoadingStocks, setIsLoadingStocks] = useState(true);
+  const [marketNews, setMarketNews] = useState<any[]>([]);
+  const [isLoadingNews, setIsLoadingNews] = useState(true);
+  const toast = useToast();
 
-  // Sample investment product data
-  const products = [
-    {
-      id: 'prod1',
-      name: 'Blue Chip Growth Fund',
-      type: 'mutual-fund',
-      company: 'Vanguard',
-      logoUrl: 'https://via.placeholder.com/50',
-      risk: 2,
-      term: 'long',
-      returnRate: { '1y': 8.2, '3y': 24.5, '5y': 52.3 },
-      description: 'A fund that invests in large, well-established companies with strong market positions and stable earnings.',
-      tags: ['Large Cap', 'Growth', 'Low Fee'],
-      rating: 4.8,
-      holdings: [
-        { name: 'Apple Inc.', allocation: 12 },
-        { name: 'Microsoft', allocation: 10 },
-        { name: 'Amazon', allocation: 8 },
-      ],
-      minInvestment: 3000,
-      expenseRatio: 0.15,
-      popularity: 94,
-    },
-    {
-      id: 'prod2',
-      name: 'Global Technology ETF',
-      type: 'etf',
-      company: 'BlackRock',
-      logoUrl: 'https://via.placeholder.com/50',
-      risk: 4,
+  // Load real-time data when component mounts
+  useEffect(() => {
+    const loadTrendingStocks = async () => {
+      setIsLoadingStocks(true);
+      try {
+        // Get trending Indian stocks from yfinance server
+        const stocks = await getIndianTrendingStocks();
+        console.log('Fetched trending Indian stocks:', stocks);
+        
+        if (stocks && stocks.length > 0) {
+          setTrendingStocks(stocks);
+        } else {
+          console.warn('No trending Indian stocks returned from API');
+        }
+      } catch (error) {
+        console.error('Error fetching trending Indian stocks:', error);
+        toast({
+          title: "Could not load trending stocks",
+          description: "There was an issue fetching NSE market data. Using preloaded recommendations instead.",
+          status: "warning",
+          duration: 3000,
+          isClosable: true,
+        });
+      } finally {
+        setIsLoadingStocks(false);
+      }
+    };
+
+    const loadMarketNews = async () => {
+      setIsLoadingNews(true);
+      try {
+        // Get market news with focus on Indian market
+        const news = await getIndianMarketNews(5);
+        console.log('Fetched Indian market news:', news);
+        
+        if (news && news.length > 0) {
+          setMarketNews(news);
+        } else {
+          console.warn('No market news returned from API');
+        }
+      } catch (error) {
+        console.error('Error fetching market news:', error);
+      } finally {
+        setIsLoadingNews(false);
+      }
+    };
+
+    loadTrendingStocks();
+    loadMarketNews();
+  }, [toast]);
+
+  // Generate real stock recommendations based on risk level
+  const generateStockRecommendations = () => {
+    if (trendingStocks.length === 0) return [];
+
+    // Make a copy to avoid modifying original array
+    const stocks = [...trendingStocks];
+
+    // Filter based on risk tolerance
+    let filteredStocks = stocks;
+    if (riskLevel <= 2) {
+      // Conservative: Low volatility stocks with stable performance
+      filteredStocks = stocks.filter(stock => Math.abs(stock.percentChange) < 1.5);
+    } else if (riskLevel >= 4) {
+      // Aggressive: Higher volatility stocks with potential for larger gains
+      filteredStocks = stocks.filter(stock => Math.abs(stock.percentChange) > 0.5);
+    }
+
+    // If no stocks match criteria, fallback to all stocks
+    if (filteredStocks.length === 0) {
+      filteredStocks = stocks;
+    }
+
+    // Convert TrendingStock objects to product format
+    return filteredStocks.map(stock => ({
+      id: stock.symbol,
+      name: stock.name || stock.symbol,
+      type: 'stock',
+      company: stock.name || stock.symbol,
+      logoUrl: `https://finnhub.io/api/logo?symbol=${stock.symbol}`,
+      risk: Math.min(5, Math.max(1, Math.ceil(Math.abs(stock.percentChange)))),
       term: 'medium',
-      returnRate: { '1y': 12.4, '3y': 42.1, '5y': 89.7 },
-      description: 'An ETF focused on global technology leaders and emerging tech innovators with high growth potential.',
-      tags: ['Technology', 'Global', 'High Growth'],
-      rating: 4.6,
-      holdings: [
-        { name: 'NVIDIA', allocation: 15 },
-        { name: 'TSMC', allocation: 12 },
-        { name: 'Samsung', allocation: 9 },
-      ],
+      returnRate: { 
+        '1d': parseFloat(stock.percentChange.toFixed(2)), 
+        '1y': parseFloat((stock.percentChange * 5).toFixed(2)), // Simulated yearly projection
+        '5y': parseFloat((stock.percentChange * 15).toFixed(2)), // Simulated 5-year projection
+      },
+      description: `${stock.name || stock.symbol} stock trading at ${CURRENCY_SYMBOL}${stock.currentPrice.toFixed(2)} with a market cap of ${(stock.marketCap ? (stock.marketCap / 1000000000).toFixed(2) + 'B' : 'N/A')}.`,
+      tags: [stock.percentChange > 0 ? 'Gaining' : 'Declining', 'Individual Stock', stock.marketCap && stock.marketCap > 100000000000 ? 'Large Cap' : 'Mid Cap'],
+      rating: 3 + (stock.percentChange > 0 ? 1.5 : -0.5),
+      holdings: [],
       minInvestment: 0,
-      expenseRatio: 0.45,
-      popularity: 88,
-    },
-    {
-      id: 'prod3',
-      name: 'Sustainable Future Fund',
-      type: 'mutual-fund',
-      company: 'Fidelity',
-      logoUrl: 'https://via.placeholder.com/50',
-      risk: 3,
-      term: 'long',
-      returnRate: { '1y': 7.8, '3y': 22.3, '5y': 48.9 },
-      description: 'A fund investing in companies with strong environmental, social, and governance (ESG) practices.',
-      tags: ['ESG', 'Sustainable', 'Mixed Cap'],
-      rating: 4.5,
-      holdings: [
-        { name: 'Tesla', allocation: 8 },
-        { name: 'NextEra Energy', allocation: 7 },
-        { name: 'First Solar', allocation: 6 },
-      ],
-      minInvestment: 2500,
-      expenseRatio: 0.58,
-      popularity: 82,
-    },
-    {
-      id: 'prod4',
-      name: 'Dividend Aristocrats Index',
-      type: 'index-fund',
-      company: 'Charles Schwab',
-      logoUrl: 'https://via.placeholder.com/50',
-      risk: 1,
-      term: 'long',
-      returnRate: { '1y': 5.2, '3y': 16.8, '5y': 38.2 },
-      description: 'An index fund tracking companies that have increased their dividend payouts consistently for at least 25 years.',
-      tags: ['Dividend', 'Income', 'Stability'],
-      rating: 4.7,
-      holdings: [
-        { name: 'Johnson & Johnson', allocation: 8 },
-        { name: 'Procter & Gamble', allocation: 7 },
-        { name: 'Coca-Cola', allocation: 6 },
-      ],
-      minInvestment: 1000,
-      expenseRatio: 0.06,
-      popularity: 90,
-    },
-    {
-      id: 'prod5',
-      name: 'Emerging Markets Opportunities',
-      type: 'etf',
-      company: 'HSBC',
-      logoUrl: 'https://via.placeholder.com/50',
-      risk: 5,
-      term: 'medium',
-      returnRate: { '1y': 9.7, '3y': 28.3, '5y': 64.1 },
-      description: 'An ETF that seeks growth opportunities in emerging market economies, focusing on companies with potential for significant growth.',
-      tags: ['Emerging Markets', 'High Risk', 'Growth'],
-      rating: 4.2,
-      holdings: [
-        { name: 'Alibaba', allocation: 10 },
-        { name: 'Tencent', allocation: 9 },
-        { name: 'Reliance Industries', allocation: 7 },
-      ],
-      minInvestment: 0,
-      expenseRatio: 0.68,
-      popularity: 76,
-    },
-    {
-      id: 'prod6',
-      name: 'Healthcare Innovation Fund',
-      type: 'mutual-fund',
-      company: 'T. Rowe Price',
-      logoUrl: 'https://via.placeholder.com/50',
-      risk: 4,
-      term: 'long',
-      returnRate: { '1y': 11.2, '3y': 36.8, '5y': 77.2 },
-      description: 'A fund investing in innovative healthcare companies developing new treatments, technologies, and services.',
-      tags: ['Healthcare', 'Innovation', 'Growth'],
-      rating: 4.4,
-      holdings: [
-        { name: 'UnitedHealth Group', allocation: 9 },
-        { name: 'Moderna', allocation: 8 },
-        { name: 'Thermo Fisher Scientific', allocation: 7 },
-      ],
-      minInvestment: 2000,
-      expenseRatio: 0.75,
-      popularity: 80,
-    },
-  ];
+      expenseRatio: 0,
+      popularity: Math.round(70 + Math.random() * 20),
+      currentPrice: stock.currentPrice,
+      change: stock.change,
+      percentChange: stock.percentChange
+    }));
+  };
+
+  // Get all products - use only stock recommendations from the yfinance server
+  const getAllProducts = () => {
+    return generateStockRecommendations();
+  };
+
+  // Combine static fund products with real stock recommendations
+  // const getAllProducts = () => {
+  //   const stockRecommendations = generateStockRecommendations();
+  //   return [...products, ...stockRecommendations];
+  // };
 
   // Filter products based on selected criteria
-  const filteredProducts = products.filter(product => {
+  const filteredProducts = getAllProducts().filter(product => {
     if (investmentType !== 'all' && product.type !== investmentType) return false;
     if (investmentTerm !== 'all' && product.term !== investmentTerm) return false;
     
@@ -158,7 +145,12 @@ const DiscoveryPage: React.FC = () => {
   });
 
   // Sort products by rating (high to low)
-  const sortedProducts = [...filteredProducts].sort((a, b) => b.rating - a.rating);
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    // Convert any string ratings to numbers for comparison
+    const ratingA = typeof a.rating === 'string' ? parseFloat(a.rating) : a.rating;
+    const ratingB = typeof b.rating === 'string' ? parseFloat(b.rating) : b.rating;
+    return ratingB - ratingA;
+  });
 
   // Map risk level to text
   const getRiskLevelText = (level: number) => {
@@ -426,21 +418,159 @@ const DiscoveryPage: React.FC = () => {
               </Button>
             </GridItem>
 
-            {/* Investment Products Grid */}
+            {/* Products Results */}
             <GridItem>
-              <Box mb={6}>
-                <Flex justify="space-between" align="center" mb={4}>
-                  <Heading size="md">Recommended for You</Heading>
-                  <Text fontSize="sm" color="gray.400">
-                    Showing {sortedProducts.length} of {products.length} products
-                  </Text>
-                </Flex>
+              <Box display={{ base: 'flex', lg: 'none' }} justifyContent="flex-end" mb={4}>
+                <Button 
+                  leftIcon={<FiFilter />} 
+                  colorScheme="orange" 
+                  variant="outline" 
+                  onClick={() => setShowFilters(!showFilters)}
+                >
+                  Filters
+                </Button>
+              </Box>
 
-                <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-                  {sortedProducts.map((product, index) => (
-                    <ProductCard key={product.id} product={product} index={index} />
-                  ))}
-                </SimpleGrid>
+              {/* Live Market Trends Section */}
+              <Box mb={8}>
+                <Heading size="md" mb={4} display="flex" alignItems="center">
+                  <Icon as={FiTrendingUp} mr={2} color="orange.300" />
+                  Live Market Trends
+                </Heading>
+
+                {isLoadingStocks ? (
+                  <Flex justify="center" align="center" h="100px">
+                    <Spinner color="orange.400" mr={3} />
+                    <Text>Loading market data...</Text>
+                  </Flex>
+                ) : trendingStocks && trendingStocks.length > 0 ? (
+                  <SimpleGrid columns={{ base: 2, md: 3, lg: 5 }} spacing={4} mb={6}>
+                    {trendingStocks.slice(0, 5).map((stock) => (
+                      <Box 
+                        key={stock.symbol} 
+                        p={3} 
+                        borderRadius="md" 
+                        bg="whiteAlpha.100"
+                        _hover={{ bg: "whiteAlpha.200" }}
+                        transition="all 0.2s"
+                      >
+                        <Flex justify="space-between" align="center" mb={1}>
+                          <Text fontWeight="bold">{stock.symbol}</Text>
+                          <Badge colorScheme={stock.percentChange > 0 ? "green" : "red"}>
+                            {stock.percentChange > 0 ? "+" : ""}{stock.percentChange.toFixed(2)}%
+                          </Badge>
+                        </Flex>
+                        <Text fontSize="sm" color="gray.400" noOfLines={1}>{stock.name || stock.symbol}</Text>
+                        <Text fontWeight="medium" mt={2}>{CURRENCY_SYMBOL}{stock.currentPrice.toFixed(2)}</Text>
+                      </Box>
+                    ))}
+                  </SimpleGrid>
+                ) : (
+                  <Box p={4} bg="gray.800" borderRadius="md" textAlign="center">
+                    <Text>No market data available right now.</Text>
+                  </Box>
+                )}
+              </Box>
+
+              {/* Recommendations Results */}
+              <Heading size="md" mb={4}>
+                Recommended for You
+                <Badge ml={2} colorScheme="blue" fontSize="xs" px={2} py={1}>
+                  {sortedProducts.length} matches
+                </Badge>
+              </Heading>
+
+              {sortedProducts.length > 0 ? (
+                <>
+                  <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6} mb={8}>
+                    {sortedProducts.map((product, index) => (
+                      <ProductCard key={product.id} product={product} index={index} />
+                    ))}
+                  </SimpleGrid>
+                </>
+              ) : (
+                <Box p={6} bg="gray.800" borderRadius="md" textAlign="center">
+                  <Icon as={FiFilter} boxSize={10} color="gray.500" mb={4} />
+                  <Heading size="md" mb={2}>No matches found</Heading>
+                  <Text mb={4}>Try adjusting your filters to see more investment options</Text>
+                  <Button colorScheme="blue" onClick={() => {
+                    setRiskLevel(3);
+                    setInvestmentType('all');
+                    setInvestmentTerm('all');
+                  }}>Reset Filters</Button>
+                </Box>
+              )}
+
+              {/* Latest Market News Section */}
+              <Box mt={10}>
+                <Heading size="md" mb={4} display="flex" alignItems="center">
+                  <Icon as={FiBarChart2} mr={2} color="blue.300" />
+                  Latest Market Insights
+                </Heading>
+
+                {isLoadingNews ? (
+                  <Flex justify="center" align="center" h="100px">
+                    <Spinner color="blue.400" mr={3} />
+                    <Text>Loading market news...</Text>
+                  </Flex>
+                ) : marketNews && marketNews.length > 0 ? (
+                  <VStack spacing={4} align="stretch">
+                    {marketNews.map((article, index) => (
+                      <Box 
+                        key={article.id || index} 
+                        p={4} 
+                        borderRadius="md" 
+                        bg="whiteAlpha.100"
+                        _hover={{ bg: "whiteAlpha.200" }}
+                      >
+                        <Flex>
+                          {article.image && (
+                            <Box 
+                              width="100px" 
+                              height="70px" 
+                              borderRadius="md" 
+                              overflow="hidden" 
+                              mr={4}
+                              display={{ base: 'none', sm: 'block' }}
+                            >
+                              <img 
+                                src={article.image} 
+                                alt={article.headline} 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            </Box>
+                          )}
+                          <Box flex="1">
+                            <Heading size="sm" mb={1}>{article.headline}</Heading>
+                            <Text fontSize="sm" color="gray.400" mb={2}>
+                              {article.source} • {new Date(article.datetime * 1000).toLocaleDateString()}
+                            </Text>
+                            <Text fontSize="sm" noOfLines={2}>{article.summary}</Text>
+                            <Button 
+                              as="a" 
+                              href={article.url} 
+                              target="_blank" 
+                              size="sm" 
+                              variant="link" 
+                              colorScheme="blue" 
+                              mt={2}
+                              rightIcon={<FiExternalLink />}
+                            >
+                              Read more
+                            </Button>
+                          </Box>
+                        </Flex>
+                      </Box>
+                    ))}
+                  </VStack>
+                ) : (
+                  <Box p={4} bg="gray.800" borderRadius="md" textAlign="center">
+                    <Text>No market news available right now.</Text>
+                  </Box>
+                )}
               </Box>
             </GridItem>
           </Grid>
@@ -456,113 +586,134 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, index }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
   return (
     <MotionBox
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
+      transition={{ duration: 0.4, delay: index * 0.1 }}
     >
-      <AnimatedCard 
-        p={0} 
-        overflow="hidden"
-        hoverEffect="lift"
-      >
-        <Box p={6}>
-          <Flex justify="space-between" align="flex-start" mb={4}>
-            <HStack spacing={3}>
-              <Avatar size="md" name={product.company} src={product.logoUrl} bg="blue.500" />
-              <Box>
-                <Heading size="md" mb={1}>{product.name}</Heading>
-                <Text fontSize="sm" color="gray.400">{product.company}</Text>
-              </Box>
-            </HStack>
+      <AnimatedCard p={0}>
+        <Box p={4}>
+          <Flex justify="space-between" mb={3}>
             <HStack>
-              <Badge colorScheme={product.risk <= 2 ? 'green' : product.risk >= 4 ? 'red' : 'yellow'} px={2} py={1}>
-                {['Very Low', 'Low', 'Medium', 'High', 'Very High'][product.risk-1]} Risk
-              </Badge>
-              <Box color="yellow.400" display="flex" alignItems="center">
-                <Icon as={FiStar} mr={1} />
-                <Text fontWeight="bold">{product.rating}</Text>
+              <Avatar 
+                src={product.logoUrl} 
+                size="sm" 
+                bg="gray.700" 
+                icon={<FiDollarSign size={16} />} 
+              />
+              <Box>
+                <Heading size="sm">{product.name}</Heading>
+                <Text fontSize="xs" color="gray.400">{product.company}</Text>
               </Box>
             </HStack>
+            
+            <Badge 
+              colorScheme={product.type === 'stock' ? (product.percentChange > 0 ? 'green' : 'red') : 
+                product.risk <= 2 ? 'green' : product.risk >= 4 ? 'red' : 'yellow'} 
+              fontSize="xs"
+            >
+              {product.type === 'stock' ? 
+                `${product.percentChange > 0 ? '+' : ''}${product.percentChange?.toFixed(2)}%` : 
+                `Risk: ${product.risk}/5`}
+            </Badge>
           </Flex>
 
-          <Text noOfLines={isExpanded ? undefined : 2} fontSize="sm" mb={4} opacity={0.8}>
-            {product.description}
-          </Text>
-
-          <Flex wrap="wrap" mb={4} gap={2}>
+          {product.type === 'stock' && (
+            <Flex mb={3} align="center">
+              <Text fontSize="lg" fontWeight="bold">{CURRENCY_SYMBOL}{product.currentPrice?.toFixed(2)}</Text>
+              <Badge ml={2} colorScheme={product.change > 0 ? 'green' : 'red'}>
+                {product.change > 0 ? '+' : ''}{product.change?.toFixed(2)}
+              </Badge>
+            </Flex>
+          )}
+          
+          <Text fontSize="sm" noOfLines={2} mb={3}>{product.description}</Text>
+          
+          <Flex wrap="wrap" mb={3} gap={2}>
             {product.tags.map((tag: string, i: number) => (
-              <Badge key={i} bg="whiteAlpha.200" color="whiteAlpha.800" px={2} py={1}>
+              <Badge key={i} colorScheme="blue" variant="subtle" fontSize="xs">
                 {tag}
               </Badge>
             ))}
           </Flex>
-
-          <Grid templateColumns="repeat(3, 1fr)" gap={4} mb={4}>
+          
+          <Divider mb={3} />
+          
+          <SimpleGrid columns={3} gap={2} mb={3}>
             <Box>
-              <Text fontSize="xs" color="gray.400">1Y Return</Text>
-              <Text fontSize="lg" fontWeight="bold" color={product.returnRate['1y'] > 0 ? 'green.400' : 'red.400'}>
-                {product.returnRate['1y']}%
-              </Text>
+              <Text fontSize="xs" color="gray.400">Rating</Text>
+              <HStack>
+                <Icon as={FiStar} color="yellow.400" boxSize={3} />
+                <Text fontWeight="bold" fontSize="sm">{product.rating}</Text>
+              </HStack>
             </Box>
-            <Box>
-              <Text fontSize="xs" color="gray.400">Min. Investment</Text>
-              <Text fontSize="lg" fontWeight="bold">
-                ${product.minInvestment > 0 ? product.minInvestment.toLocaleString() : '0'}
-              </Text>
-            </Box>
-            <Box>
-              <Text fontSize="xs" color="gray.400">Expense Ratio</Text>
-              <Text fontSize="lg" fontWeight="bold">
-                {product.expenseRatio}%
-              </Text>
-            </Box>
-          </Grid>
-
-          {isExpanded && (
-            <Box mt={4} mb={4}>
-              <Text fontWeight="medium" mb={2}>Top Holdings</Text>
-              <VStack align="stretch" spacing={2}>
-                {product.holdings.map((holding: any, i: number) => (
-                  <Flex key={i} justify="space-between" p={2} bg="whiteAlpha.100" borderRadius="md">
-                    <Text fontSize="sm">{holding.name}</Text>
-                    <Text fontSize="sm" fontWeight="medium">{holding.allocation}%</Text>
-                  </Flex>
+            
+            {product.type !== 'stock' && (
+              <>
+                <Box>
+                  <Text fontSize="xs" color="gray.400">Expense Ratio</Text>
+                  <Text fontWeight="bold" fontSize="sm">{product.expenseRatio}%</Text>
+                </Box>
+                
+                <Box>
+                  <Text fontSize="xs" color="gray.400">Min Investment</Text>
+                  <Text fontWeight="bold" fontSize="sm">
+                    {product.minInvestment === 0 ? 'None' : `$${product.minInvestment}`}
+                  </Text>
+                </Box>
+              </>
+            )}
+            
+            {product.type === 'stock' && (
+              <>
+                <Box>
+                  <Text fontSize="xs" color="gray.400">1D Return</Text>
+                  <Text 
+                    fontWeight="bold" 
+                    fontSize="sm"
+                    color={product.returnRate['1d'] > 0 ? 'green.400' : 'red.400'}
+                  >
+                    {product.returnRate['1d'] > 0 ? '+' : ''}{product.returnRate['1d']}%
+                  </Text>
+                </Box>
+                
+                <Box>
+                  <Text fontSize="xs" color="gray.400">Market Cap</Text>
+                  <Text fontWeight="bold" fontSize="sm">
+                    {product.marketCap ? `$${(product.marketCap / 1000000000).toFixed(1)}B` : 'N/A'}
+                  </Text>
+                </Box>
+              </>
+            )}
+          </SimpleGrid>
+          
+          {product.type !== 'stock' && product.holdings && product.holdings.length > 0 && (
+            <Box mb={3}>
+              <Text fontSize="xs" color="gray.400" mb={1}>Top Holdings</Text>
+              <HStack spacing={2}>
+                {product.holdings.slice(0, 3).map((holding: any, i: number) => (
+                  <Badge key={i} variant="outline" fontSize="xs">
+                    {holding.name} {holding.allocation}%
+                  </Badge>
                 ))}
-              </VStack>
+              </HStack>
             </Box>
           )}
-
-          <Flex justify="space-between" mt={4}>
+          
+          <Flex justify="space-between" align="center" mt={2}>
+            <HStack>
+              <Icon as={FiBarChart2} color="blue.400" />
+              <Text fontSize="sm" color="blue.400">View Details</Text>
+            </HStack>
+            
             <Button 
               size="sm" 
-              variant="ghost" 
-              leftIcon={isExpanded ? undefined : <FiInfo />}
-              onClick={() => setIsExpanded(!isExpanded)}
+              colorScheme="blue" 
+              rightIcon={<FiHeart />}
             >
-              {isExpanded ? 'Show Less' : 'More Details'}
+              Add to Watchlist
             </Button>
-            <HStack>
-              <Button
-                size="sm"
-                variant="ghost"
-                color="brand.300"
-                leftIcon={<FiHeart />}
-              >
-                Save
-              </Button>
-              <Button
-                size="sm"
-                variant="solid"
-                colorScheme="blue"
-                rightIcon={<FiExternalLink />}
-              >
-                Invest
-              </Button>
-            </HStack>
           </Flex>
         </Box>
       </AnimatedCard>
@@ -570,4 +721,4 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, index }) => {
   );
 };
 
-export default DiscoveryPage; 
+export default DiscoveryPage;
