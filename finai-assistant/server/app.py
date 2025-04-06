@@ -11,8 +11,23 @@ import secrets
 
 # Add parent directory to Python path to find the api module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from api.stock_data import register_stock_routes  # Now Python can find this module
-from upstox_service import register_upstox_routes
+sys.path.append('/app')  # Add the app directory in Docker container
+try:
+    from api.stock_data import register_stock_routes
+except ImportError:
+    print("Warning: Could not import api.stock_data. API routes will not be available.")
+    # Define a dummy function to avoid errors
+    def register_stock_routes(app):
+        print("Stock routes not registered due to missing module")
+        pass
+try:
+    from upstox_service import register_upstox_routes
+except ImportError:
+    print("Warning: Could not import upstox_service. Upstox routes will not be available.")
+    # Define a dummy function to avoid errors
+    def register_upstox_routes(app):
+        print("Upstox routes not registered due to missing module")
+        pass
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)  # Enable CORS with credentials for session cookies

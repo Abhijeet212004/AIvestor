@@ -15,10 +15,36 @@ const PORT = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 
-// Start upstox server as a module
+// Start upstox server as a separate process
 console.log('Initializing Upstox Server...');
-const upstoxRoutes = require('./upstox-server');
-app.use('/upstox', upstoxRoutes);
+const upstoxServer = spawn('node', ['upstox-server.js']);
+
+upstoxServer.stdout.on('data', (data) => {
+  console.log(`Upstox Server: ${data}`);
+});
+
+upstoxServer.stderr.on('data', (data) => {
+  console.error(`Upstox Server Error: ${data}`);
+});
+
+// Proxy requests to upstox server
+app.use('/upstox', (req, res) => {
+  const options = {
+    method: req.method,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
+  };
+
+  fetch(`http://localhost:5001${req.url}`, options)
+    .then(response => response.json())
+    .then(data => res.json(data))
+    .catch(error => {
+      console.error('Error proxying to upstox server:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    });
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
