@@ -23,5 +23,5 @@ firebase-admin==6.4.0
 gunicorn==21.2.0
 
 # Additional dependencies
-upstox-python-sdk==2.1.3
+upstox-python-sdk==2.2.0
 requests-oauthlib==1.3.1
