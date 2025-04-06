@@ -5,15 +5,11 @@ const cors = require('cors');
 const axios = require('axios');
 const upstoxSdk = require('upstox-js-sdk');
 
-const app = express();
-const PORT = process.env.PORT || 5001;
+// Create a router instead of a full app for integration with combined server
+const router = express.Router();
 
 // Upstox API BASE URL
 const UPSTOX_BASE_URL = 'https://api.upstox.com/v2';
-
-// Enable CORS and JSON parsing
-app.use(cors());
-app.use(express.json());
 
 // Initialize SDK with your credentials
 const upstoxClient = upstoxSdk;
@@ -154,7 +150,7 @@ const formatInstrumentSymbol = (symbol) => {
 };
 
 // GET /api/market-data - Get real-time stock quotes
-app.get('/api/market-data', async (req, res) => {
+router.get('/api/market-data', async (req, res) => {
   try {
     console.log('Received market-data request with query:', req.query);
     const { instruments } = req.query;
@@ -388,7 +384,7 @@ function getStockSector(symbol) {
 }
 
 // Simple status endpoint
-app.get('/api/status', (req, res) => {
+router.get('/api/status', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -398,7 +394,7 @@ app.get('/api/status', (req, res) => {
 });
 
 // Test endpoint to verify connectivity
-app.get('/api/test', (req, res) => {
+router.get('/api/test', (req, res) => {
   console.log('Test endpoint hit');
   res.json({
     status: 'success',
@@ -408,7 +404,7 @@ app.get('/api/test', (req, res) => {
 });
 
 // GET /api/historical-data - Get historical OHLC data
-app.get('/api/historical-data', async (req, res) => {
+router.get('/api/historical-data', async (req, res) => {
   try {
     const { instrument, interval, from_date, to_date } = req.query;
     
@@ -712,10 +708,10 @@ function generateHistoricalMockData(instrument, interval, from_date, to_date) {
   return mockData;
 }
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`API Key configured: ${!!apiKey}`);
-  console.log(`Access token configured: ${!!accessToken}`);
-  console.log('Focus: Real-time stock prices via /api/market-data endpoint');
-});
+// Export the router for use in combined server
+module.exports = router;
+
+// Log configuration status
+console.log(`Upstox routes initialized`);
+console.log(`API Key configured: ${!!apiKey}`);
+console.log(`Access token configured: ${!!accessToken}`);

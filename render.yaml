@@ -1,0 +1,28 @@
+services:
+  # Combined Backend API Service
+  - type: web
+    name: aivestor-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: UPSTOX_API_KEY
+        sync: false
+      - key: UPSTOX_ACCESS_TOKEN
+        sync: false
+      - key: RAPIDAPI_KEY
+        sync: false
+
+  # Frontend Static Site
+  - type: web
+    name: aivestor-frontend
+    env: static
+    buildCommand: cd finai-assistant && npm install && npm run build
+    staticPublishPath: ./finai-assistant/build
+    envVars:
+      - key: REACT_APP_API_URL
+        fromService:
+          name: aivestor-api
+          type: web
+          property: url
