@@ -9,11 +9,10 @@ import yfinance as yf
 import sys
 import secrets
 
-# Comment out the api module imports since we're using a combined server approach
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# These routes are now handled by the combined server
-# from api.stock_data import register_stock_routes
-# from upstox_service import register_upstox_routes
+# Add parent directory to Python path to find the api module
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from api.stock_data import register_stock_routes  # Now Python can find this module
+from upstox_service import register_upstox_routes
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)  # Enable CORS with credentials for session cookies
@@ -21,11 +20,11 @@ CORS(app, supports_credentials=True)  # Enable CORS with credentials for session
 # Configure secret key for sessions
 app.secret_key = secrets.token_hex(16)  # Generate random secret key
 
-# These routes are now handled by the combined server
-# register_stock_routes(app)
+# Register stock data routes
+register_stock_routes(app)
 
-# These routes are now handled by the combined server
-# register_upstox_routes(app)
+# Register routes from upstox_service
+register_upstox_routes(app)
 
 # Add RapidAPI credentials as constants at the top of the file
 RAPIDAPI_KEY = "3eb4e1fb3bmsh51fce18992aaa0ep180473jsn735202c42635"
@@ -446,7 +445,4 @@ def health_check():
     return jsonify({"status": "healthy"})
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
-else:
-    # When imported as a module by the combined server
-    print("Chatbot API initialized as a module")
+    app.run(debug=True, host='0.0.0.0', port=5000) 

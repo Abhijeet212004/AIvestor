@@ -228,6 +228,3 @@ def get_fallback_market_cap(ticker):
 if __name__ == '__main__':
     print("Starting NSE Stock Data API Server...")
     app.run(host='0.0.0.0', port=5002, debug=True)
-else:
-    # When imported as a module by the combined server
-    print("NSE Stock Data API initialized as a module")

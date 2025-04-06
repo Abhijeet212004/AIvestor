@@ -5,11 +5,15 @@ const cors = require('cors');
 const axios = require('axios');
 const upstoxSdk = require('upstox-js-sdk');
 
-// Create a router instead of a full app for integration with combined server
-const router = express.Router();
+const app = express();
+const PORT = process.env.PORT || 5001;
 
 // Upstox API BASE URL
 const UPSTOX_BASE_URL = 'https://api.upstox.com/v2';
+
+// Enable CORS and JSON parsing
+app.use(cors());
+app.use(express.json());
 
 // Initialize SDK with your credentials
 const upstoxClient = upstoxSdk;
@@ -150,7 +154,7 @@ const formatInstrumentSymbol = (symbol) => {
 };
 
 // GET /api/market-data - Get real-time stock quotes
-router.get('/api/market-data', async (req, res) => {
+app.get('/api/market-data', async (req, res) => {
   try {
     console.log('Received market-data request with query:', req.query);
     const { instruments } = req.query;
@@ -384,7 +388,7 @@ function getStockSector(symbol) {
 }
 
 // Simple status endpoint
-router.get('/api/status', (req, res) => {
+app.get('/api/status', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -394,7 +398,7 @@ router.get('/api/status', (req, res) => {
 });
 
 // Test endpoint to verify connectivity
-router.get('/api/test', (req, res) => {
+app.get('/api/test', (req, res) => {
   console.log('Test endpoint hit');
   res.json({
     status: 'success',
@@ -404,7 +408,7 @@ router.get('/api/test', (req, res) => {
 });
 
 // GET /api/historical-data - Get historical OHLC data
-router.get('/api/historical-data', async (req, res) => {
+app.get('/api/historical-data', async (req, res) => {
   try {
     const { instrument, interval, from_date, to_date } = req.query;
     
@@ -708,10 +712,10 @@ function generateHistoricalMockData(instrument, interval, from_date, to_date) {
   return mockData;
 }
 
-// Export the router for use in combined server
-module.exports = router;
-
-// Log configuration status
-console.log(`Upstox routes initialized`);
-console.log(`API Key configured: ${!!apiKey}`);
-console.log(`Access token configured: ${!!accessToken}`);
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`API Key configured: ${!!apiKey}`);
+  console.log(`Access token configured: ${!!accessToken}`);
+  console.log('Focus: Real-time stock prices via /api/market-data endpoint');
+});
