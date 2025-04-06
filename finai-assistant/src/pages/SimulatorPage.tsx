@@ -1509,16 +1509,10 @@ const SimulatorPage: React.FC = () => {
                                 <Text fontWeight="medium">₹{chartRef.current?.getOHLC()?.high.toFixed(2) || (selectedStock as MarketStock)?.HIGH?.toFixed(2) || 'N/A'}</Text>
                               </Box>
                             </SimpleGrid>
-                          </Box>
-                        </Grid>
-                        <Box className="glass-card" p={4} borderRadius="md">
-                          <Heading size="sm" mb={4}>Trade {(selectedStock as MarketStock)?.SYMBOL || (selectedStock as PortfolioStock)?.symbol}</Heading>
-                          <Flex direction="column" gap={4}>
-                            <Flex>
+                            <HStack spacing={4} mt={4} w="100%">
                               <Button 
                                 flex={1} 
                                 colorScheme="green"
-                                mr={2}
                                 leftIcon={<FiTrendingUp />}
                                 onClick={() => {
                                   setTransactionType('buy');
@@ -1538,9 +1532,9 @@ const SimulatorPage: React.FC = () => {
                               >
                                 Sell
                               </Button>
-                            </Flex>
-                          </Flex>
-                        </Box>
+                            </HStack>
+                          </Box>
+                        </Grid>
                       </Box>
                     ) : filteredStocks.length > 0 ? (
                       // Stock Table View
@@ -1730,55 +1724,74 @@ const SimulatorPage: React.FC = () => {
                 </Box>
               </Box>
               
-              {/* Place Order Section - Completely Separate */}
+              {/* Price and Trade Section */}
+              <SimpleGrid columns={2} spacing={6} mb={6}>
+                {/* Price Card */}
+                <Box className="glass-card" p={4} borderRadius="md">
+                  <Heading size="sm" mb={4}>Current Price</Heading>
+                  <VStack spacing={4} align="stretch">
+                    <Stat>
+                      <StatLabel>Share Price</StatLabel>
+                      <StatNumber>₹{
+                        selectedStock 
+                          ? (((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice) || 0).toFixed(2)
+                          : 'N/A'
+                      }</StatNumber>
+                    </Stat>
+                    <HStack>
+                      <Button 
+                        flex={1} 
+                        colorScheme={transactionType === 'buy' ? 'green' : 'gray'}
+                        variant={transactionType === 'buy' ? 'solid' : 'outline'}
+                        onClick={() => setTransactionType('buy')}
+                        leftIcon={<FiTrendingUp />}
+                      >
+                        Buy
+                      </Button>
+                      <Button 
+                        flex={1} 
+                        colorScheme={transactionType === 'sell' ? 'red' : 'gray'}
+                        variant={transactionType === 'sell' ? 'solid' : 'outline'}
+                        onClick={() => setTransactionType('sell')}
+                        leftIcon={<FiTrendingDown />}
+                      >
+                        Sell
+                      </Button>
+                    </HStack>
+                  </VStack>
+                </Box>
+
+                {/* OHLC Card */}
+                <Box className="glass-card" p={4} borderRadius="md">
+                  <Heading size="sm" mb={4}>Order Details</Heading>
+                  <VStack spacing={4} align="stretch">
+                    <FormControl>
+                      <FormLabel>Amount to {transactionType === 'buy' ? 'Invest' : 'Sell'}</FormLabel>
+                      <NumberInput 
+                        value={buyAmount}
+                        onChange={(valueString) => setBuyAmount(parseFloat(valueString))}
+                        min={100}
+                        max={portfolio.cash}
+                      >
+                        <NumberInputField />
+                      </NumberInput>
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel>Order Type</FormLabel>
+                      <Select defaultValue="market" bg="whiteAlpha.100">
+                        <option value="market">Market Order</option>
+                        <option value="limit">Limit Order</option>
+                        <option value="stop">Stop Order</option>
+                      </Select>
+                    </FormControl>
+                  </VStack>
+                </Box>
+              </SimpleGrid>
+
+              {/* Order Summary */}
               <Box className="glass-card" p={4} borderRadius="md">
-                <Heading size="sm" mb={4}>Place Order</Heading>
-              
-                <HStack mb={4}>
-                  <Button 
-                    flex={1} 
-                    colorScheme={transactionType === 'buy' ? 'green' : 'gray'}
-                    variant={transactionType === 'buy' ? 'solid' : 'outline'}
-                    onClick={() => setTransactionType('buy')}
-                    leftIcon={<FiTrendingUp />}
-                  >
-                    Buy
-                  </Button>
-                  <Button 
-                    flex={1} 
-                    colorScheme={transactionType === 'sell' ? 'red' : 'gray'}
-                    variant={transactionType === 'sell' ? 'solid' : 'outline'}
-                    onClick={() => setTransactionType('sell')}
-                    leftIcon={<FiTrendingDown />}
-                  >
-                    Sell
-                  </Button>
-                </HStack>
-                
-                <Grid templateColumns="repeat(2, 1fr)" gap={4} mb={4}>
-                  <FormControl>
-                    <FormLabel>Amount to {transactionType === 'buy' ? 'Invest' : 'Sell'}</FormLabel>
-                    <NumberInput 
-                      value={buyAmount}
-                      onChange={(valueString) => setBuyAmount(parseFloat(valueString))}
-                      min={100}
-                      max={portfolio.cash}
-                    >
-                      <NumberInputField />
-                    </NumberInput>
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel>Order Type</FormLabel>
-                    <Select defaultValue="market" bg="whiteAlpha.100">
-                      <option value="market">Market Order</option>
-                      <option value="limit">Limit Order</option>
-                      <option value="stop">Stop Order</option>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                
-                <Box p={4} bg="whiteAlpha.100" borderRadius="md" mb={4}>
+                <Heading size="sm" mb={4}>Order Summary</Heading>
+                <Box p={4} bg="whiteAlpha.100" borderRadius="md">
                   <Flex justify="space-between" mb={2}>
                     <Text fontSize="sm">Estimated Shares</Text>
                     <Text fontSize="sm" fontWeight="bold">
@@ -1786,14 +1799,6 @@ const SimulatorPage: React.FC = () => {
                         ? Math.floor(buyAmount / ((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 1))
                         : 0} shares
                     </Text>
-                  </Flex>
-                  <Flex justify="space-between" mb={2}>
-                    <Text fontSize="sm">Share Price</Text>
-                    <Text fontSize="sm">₹{
-                      selectedStock 
-                        ? (((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice) || 0).toFixed(2)
-                        : 'N/A'
-                    }</Text>
                   </Flex>
                   <Flex justify="space-between" mb={2}>
                     <Text fontSize="sm">Estimated Cost</Text>

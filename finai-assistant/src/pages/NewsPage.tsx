@@ -6,7 +6,7 @@ import {
 } from '@chakra-ui/react';
 import { 
   FiFileText, FiTrendingUp, FiClock, FiExternalLink, 
-  FiFilter, FiRefreshCw, FiInfo, FiChevronDown
+  FiFilter, FiRefreshCw, FiInfo, FiChevronDown, FiBarChart2
 } from 'react-icons/fi';
 import { format } from 'date-fns';
 import Navigation from '../components/Navigation';
@@ -294,19 +294,67 @@ const NewsPage: React.FC = () => {
               <Box p={6} borderRadius="lg" bg="rgba(26, 32, 44, 0.7)" backdropFilter="blur(10px)" h="100%">
                 <Box mt={6}>
                   <Divider mb={4} />
-                  <Heading size="md" mb={4}>Market Resources</Heading>
+                  <Heading size="md" mb={4} color="white">Market Resources</Heading>
                   <VStack spacing={3} align="stretch">
-                    <Button variant="ghost" justifyContent="flex-start" leftIcon={<Icon as={FiFileText} color="purple.400" />}>
-                      Market Reports
+                    <Button
+                      as="a"
+                      href="https://www.nasdaq.com/market-activity/earnings"
+                      target="_blank"
+                      variant="ghost"
+                      justifyContent="flex-start"
+                      leftIcon={<Icon as={FiClock} color="yellow.400" />}
+                      color="white"
+                      _hover={{ bg: 'whiteAlpha.200', color: 'yellow.400' }}
+                    >
+                      Earnings Calendar
                     </Button>
-                    <Button variant="ghost" justifyContent="flex-start" leftIcon={<Icon as={FiTrendingUp} color="green.400" />}>
-                      Technical Analysis
+                    <Button
+                      as="a"
+                      href="https://www.nasdaq.com/market-activity/ipos"
+                      target="_blank"
+                      variant="ghost"
+                      justifyContent="flex-start"
+                      leftIcon={<Icon as={FiTrendingUp} color="green.400" />}
+                      color="white"
+                      _hover={{ bg: 'whiteAlpha.200', color: 'green.400' }}
+                    >
+                      IPO Calendar
                     </Button>
-                    <Button variant="ghost" justifyContent="flex-start" leftIcon={<Icon as={FiInfo} color="blue.400" />}>
-                      Investing Guides
+                    <Button
+                      as="a"
+                      href="https://www.angelone.in/calculators/sip-calculator?utm_source=google&utm_medium=cpc&utm_campaign=B2C_Search_Mutual_Fund_SIP_Calculator&network=g&keyword=sip%20calculator&matchtype=e&creative=702410473399&device=c&devicemodel=&gad_source=1&gclid=CjwKCAjwzMi_BhACEiwAX4YZUKVnjxFSBmSfr1Hf1Ucq8dywqeYxGNTPIjm97VCYP4q-P_ADd-qvmhoCsMAQAvD_BwE"
+                      target="_blank"
+                      variant="ghost"
+                      justifyContent="flex-start"
+                      leftIcon={<Icon as={FiBarChart2} color="blue.400" />}
+                      color="white"
+                      _hover={{ bg: 'whiteAlpha.200', color: 'blue.400' }}
+                    >
+                      SIP Calculator
                     </Button>
-                    <Button variant="ghost" justifyContent="flex-start" leftIcon={<Icon as={FiClock} color="yellow.400" />}>
-                      Economic Calendar
+                    <Button
+                      as="a"
+                      href="https://www.screener.in/company/RELIANCE/consolidated/"
+                      target="_blank"
+                      variant="ghost"
+                      justifyContent="flex-start"
+                      leftIcon={<Icon as={FiFileText} color="purple.400" />}
+                      color="white"
+                      _hover={{ bg: 'whiteAlpha.200', color: 'purple.400' }}
+                    >
+                      Stock Screener
+                    </Button>
+                    <Button
+                      as="a"
+                      href="https://in.tradingview.com/advanced-charts/"
+                      target="_blank"
+                      variant="ghost"
+                      justifyContent="flex-start"
+                      leftIcon={<Icon as={FiBarChart2} color="blue.400" />}
+                      color="white"
+                      _hover={{ bg: 'whiteAlpha.200', color: 'blue.400' }}
+                    >
+                      Advanced Charts
                     </Button>
                   </VStack>
                 </Box>
