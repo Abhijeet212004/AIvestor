@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Button,
@@ -999,6 +999,8 @@ const SimulatorPage: React.FC = () => {
     setSearchTimeout(timeout);
   };
 
+  const chartRef = useRef<any>(null);
+
   return (
     <Box minH="100vh" bg="darkBlue.900">
       {/* Custom Page Header */}
@@ -1254,7 +1256,7 @@ const SimulatorPage: React.FC = () => {
                     </Box>
                     
                     <Table variant="simple" size="sm">
-                      <Thead bg="whiteAlpha.100">
+                      <Thead>
                         <Tr>
                           <Th>Ticker</Th>
                           <Th>Name</Th>
@@ -1438,6 +1440,7 @@ const SimulatorPage: React.FC = () => {
                             leftIcon={<Icon as={FiArrowDown} />} 
                             variant="outline" 
                             size="sm"
+                            bg="white"
                             onClick={handleBackToMarket}
                           >
                             Back to Market
@@ -1465,6 +1468,7 @@ const SimulatorPage: React.FC = () => {
                               change={(selectedStock as MarketStock)?.CHANGE || ((selectedStock as PortfolioStock)?.currentPrice || 0) - ((selectedStock as PortfolioStock)?.purchasePrice || 0)}
                               changePercent={(selectedStock as MarketStock)?.CHANGE_PERCENT || ((selectedStock as PortfolioStock)?.profitLossPercentage || 0)}
                               timeInterval={selectedChartInterval}
+                              ref={chartRef}
                             />
                           </Box>
                     
@@ -1490,56 +1494,53 @@ const SimulatorPage: React.FC = () => {
                             <SimpleGrid columns={2} spacing={4}>
                               <Box>
                                 <Text color="gray.400" mb={1}>Open</Text>
-                                <Text fontWeight="medium">₹{(selectedStock as MarketStock)?.OPEN?.toFixed(2) || 'N/A'}</Text>
+                                <Text fontWeight="medium">₹{chartRef.current?.getOHLC()?.open.toFixed(2) || (selectedStock as MarketStock)?.OPEN?.toFixed(2) || 'N/A'}</Text>
                               </Box>
                               <Box>
                                 <Text color="gray.400" mb={1}>Previous Close</Text>
-                                <Text fontWeight="medium">₹{(selectedStock as MarketStock)?.PREV_CLOSE?.toFixed(2) || 'N/A'}</Text>
+                                <Text fontWeight="medium">₹{chartRef.current?.getOHLC()?.prev_close.toFixed(2) || (selectedStock as MarketStock)?.PREV_CLOSE?.toFixed(2) || 'N/A'}</Text>
                               </Box>
                               <Box>
                                 <Text color="gray.400" mb={1}>Day's Low</Text>
-                                <Text fontWeight="medium">₹{(selectedStock as MarketStock)?.LOW?.toFixed(2) || 'N/A'}</Text>
+                                <Text fontWeight="medium">₹{chartRef.current?.getOHLC()?.low.toFixed(2) || (selectedStock as MarketStock)?.LOW?.toFixed(2) || 'N/A'}</Text>
                               </Box>
                               <Box>
                                 <Text color="gray.400" mb={1}>Day's High</Text>
-                                <Text fontWeight="medium">₹{(selectedStock as MarketStock)?.HIGH?.toFixed(2) || 'N/A'}</Text>
+                                <Text fontWeight="medium">₹{chartRef.current?.getOHLC()?.high.toFixed(2) || (selectedStock as MarketStock)?.HIGH?.toFixed(2) || 'N/A'}</Text>
                               </Box>
-                             
                             </SimpleGrid>
-                            
-                            <Divider my={4} />
-                            
-                            <Heading size="sm" mb={4}>Trade {(selectedStock as MarketStock)?.SYMBOL || (selectedStock as PortfolioStock)?.symbol}</Heading>
-                            
-                            <Flex direction="column" gap={4}>
-                              <Flex>
-                                <Button 
-                                  flex={1} 
-                                  colorScheme="green"
-                                  mr={2}
-                                  leftIcon={<FiTrendingUp />}
-                                  onClick={() => {
-                                    setTransactionType('buy');
-                                    onOpen();
-                                  }}
-                                >
-                                  Buy
-                                </Button>
-                                <Button 
-                                  flex={1} 
-                                  colorScheme="red"
-                                  leftIcon={<FiTrendingDown />}
-                                  onClick={() => {
-                                    setTransactionType('sell');
-                                    onOpen();
-                                  }}
-                                >
-                                  Sell
-                                </Button>
-                              </Flex>
-                            </Flex>
                           </Box>
                         </Grid>
+                        <Box className="glass-card" p={4} borderRadius="md">
+                          <Heading size="sm" mb={4}>Trade {(selectedStock as MarketStock)?.SYMBOL || (selectedStock as PortfolioStock)?.symbol}</Heading>
+                          <Flex direction="column" gap={4}>
+                            <Flex>
+                              <Button 
+                                flex={1} 
+                                colorScheme="green"
+                                mr={2}
+                                leftIcon={<FiTrendingUp />}
+                                onClick={() => {
+                                  setTransactionType('buy');
+                                  onOpen();
+                                }}
+                              >
+                                Buy
+                              </Button>
+                              <Button 
+                                flex={1} 
+                                colorScheme="red"
+                                leftIcon={<FiTrendingDown />}
+                                onClick={() => {
+                                  setTransactionType('sell');
+                                  onOpen();
+                                }}
+                              >
+                                Sell
+                              </Button>
+                            </Flex>
+                          </Flex>
+                        </Box>
                       </Box>
                     ) : filteredStocks.length > 0 ? (
                       // Stock Table View
@@ -1703,52 +1704,6 @@ const SimulatorPage: React.FC = () => {
             <ModalCloseButton />
 
             <ModalBody p={6}>
-              {/* Market Information */}
-              <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6} mb={8}>
-                <Box className="glass-card" p={4} borderRadius="md">
-                  <Text color="gray.400" mb={2} fontWeight="bold">Price Information</Text>
-                  <Flex align="center" mb={4}>
-                    <Heading size="md">₹{((selectedStock as MarketStock)?.PRICE || (selectedStock as PortfolioStock)?.currentPrice || 0).toFixed(2)}</Heading>
-                    <Badge ml={2} colorScheme={(selectedStock as MarketStock)?.CHANGE && (selectedStock as MarketStock).CHANGE >= 0 ? 'green' : 'red'}>
-                      {(selectedStock as MarketStock)?.CHANGE && (selectedStock as MarketStock).CHANGE >= 0 ? '+' : ''}{Math.abs((selectedStock as MarketStock)?.CHANGE_PERCENT || 0).toFixed(2)}%
-                    </Badge>
-                  </Flex>
-                  
-                  {(selectedStock as MarketStock)?.PREV_CLOSE && (
-                    <Box mt={2}>
-                      <Text color="gray.400" mb={1}>Previous Close</Text>
-                      <Heading size="sm">₹{(selectedStock as MarketStock).PREV_CLOSE.toFixed(2)}</Heading>
-                    </Box>
-                  )}
-                </Box>
-                
-                <Box className="glass-card" p={4} borderRadius="md">
-                  <Text color="gray.400" mb={2} fontWeight="bold">Market Information</Text>
-                  <SimpleGrid columns={2} spacing={4}>
-                    <Box>
-                      <Text fontSize="xs" color="gray.500">Volume</Text>
-                      <Text fontSize="sm" fontWeight="medium">{(selectedStock as MarketStock)?.VOLUME || 'N/A'}</Text>
-                    </Box>
-                    <Box>
-                      <Text fontSize="xs" color="gray.500">Market Cap</Text>
-                      <Text fontSize="sm" fontWeight="medium">{(selectedStock as MarketStock)?.MARKET_CAP || 'N/A'}</Text>
-                    </Box>
-                    <Box>
-                      <Text fontSize="xs" color="gray.500">Day Range</Text>
-                      <Text fontSize="sm" fontWeight="medium">
-                        {(selectedStock as MarketStock)?.LOW && (selectedStock as MarketStock)?.HIGH ? 
-                          `₹${(selectedStock as MarketStock).LOW.toFixed(2)} - ₹${(selectedStock as MarketStock).HIGH.toFixed(2)}` : 
-                          'N/A'}
-                      </Text>
-                    </Box>
-                    <Box>
-                      <Text fontSize="xs" color="gray.500">52W Range</Text>
-                      <Text fontSize="sm" fontWeight="medium">N/A</Text>
-                    </Box>
-                  </SimpleGrid>
-                </Box>
-              </Grid>
-              
               {/* Chart Section - Completely Separate */}
               <Box className="glass-card" p={4} mb={8} borderRadius="md">
                 <Flex justify="space-between" align="center" mb={4}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef } from 'react';
 import {
   Box,
   Flex,
@@ -97,34 +97,32 @@ interface EnhancedStockChartProps {
   timeInterval?: string;
 }
 
-const EnhancedStockChart: React.FC<EnhancedStockChartProps> = ({
+const EnhancedStockChart = forwardRef<any, EnhancedStockChartProps>(({
   symbol,
-  name = 'Stock',
+  name,
   currentPrice = 0,
   previousClose = 0,
   change = 0,
   changePercent = 0,
-  volume = 0,
-  marketCap = '-',
-  isLoading = false,
+  volume,
+  marketCap,
+  isLoading,
   onRefresh,
   timeInterval: propTimeInterval
-}) => {
+}, ref) => {
+  // State variables
   const [chartData, setChartData] = useState<StockHistoryData[]>([]);
-  const [timeInterval, setTimeInterval] = useState<string>(propTimeInterval || '1D');
-  const [isChartLoading, setIsChartLoading] = useState<boolean>(true);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-  const chartRef = useRef<ChartJS>(null);
-
-  // Colors based on theme
-  const lineColor = useColorModeValue('#3182CE', '#63B3ED');
-  const gradientTopColor = useColorModeValue('rgba(49, 130, 206, 0.4)', 'rgba(99, 179, 237, 0.4)');
-  const gradientBottomColor = useColorModeValue('rgba(49, 130, 206, 0)', 'rgba(99, 179, 237, 0)');
-  const gridColor = useColorModeValue('rgba(0, 0, 0, 0.1)', 'rgba(255, 255, 255, 0.1)');
-  const textColor = useColorModeValue('#2D3748', '#E2E8F0');
-  const additionalStatsBg = useColorModeValue('gray.50', 'gray.700');
+  const [isChartLoading, setIsChartLoading] = useState(true);
+  const [timeInterval, setTimeInterval] = useState(propTimeInterval || '1M');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
-  // Price change colors
+  // Get color mode values
+  const gridColor = useColorModeValue('rgba(0, 0, 0, 0.1)', 'rgba(255, 255, 255, 0.1)');
+  const textColor = useColorModeValue('gray.600', 'gray.300');
+  const chartColor = change >= 0 ? 'green.500' : 'red.500';
+  const chartGradientTop = change >= 0 ? 'rgba(72, 187, 120, 0.2)' : 'rgba(245, 101, 101, 0.2)';
+  const chartGradientBottom = 'rgba(0, 0, 0, 0)';
+  const additionalStatsBg = useColorModeValue('gray.50', 'gray.700');
   const positiveColor = '#48BB78';
   const negativeColor = '#F56565';
   const priceChangeColor = change >= 0 ? positiveColor : negativeColor;
@@ -316,6 +314,25 @@ const EnhancedStockChart: React.FC<EnhancedStockChartProps> = ({
     return lastUpdated.toLocaleString();
   };
 
+  const getOHLC = () => {
+    if (!chartData || chartData.length === 0) return null;
+    
+    const open = chartData[0].open;
+    const high = Math.max(...chartData.map(d => d.high));
+    const low = Math.min(...chartData.map(d => d.low));
+    const close = chartData[chartData.length - 1].close;
+    const prev_close = previousClose;
+    
+    return { open, high, low, close, prev_close };
+  };
+
+  // Expose methods via ref
+  React.useImperativeHandle(ref, () => ({
+    getOHLC,
+    getChartData: () => chartData,
+    refreshChart: handleRefresh
+  }));
+
   return (
     <Box 
       as={motion.div}
@@ -395,7 +412,7 @@ const EnhancedStockChart: React.FC<EnhancedStockChartProps> = ({
               <Flex justifyContent="flex-end" alignItems="center" gap={4}>
                 <Tooltip label="Volume" placement="top">
                   <Text fontSize="sm" color="gray.500">
-                    Vol: {volume.toLocaleString()}
+                    Vol: {volume ? volume.toLocaleString() : 'N/A'}
                   </Text>
                 </Tooltip>
                 {marketCap && (
@@ -504,6 +521,6 @@ const EnhancedStockChart: React.FC<EnhancedStockChartProps> = ({
       )}
     </Box>
   );
-};
+});
 
 export default EnhancedStockChart;

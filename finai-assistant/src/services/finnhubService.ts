@@ -415,7 +415,7 @@ export const getTrendingStocks = async (symbols: string[] = []): Promise<Trendin
 export const getStocksFromYFinanceServer = async (): Promise<TrendingStock[]> => {
   try {
     console.log('Fetching Indian stocks from YFinance server');
-    const response = await fetch('http://localhost:5001/api/trending');
+    const response = await fetch('http://localhost:5002/api/trending');
     
     if (!response.ok) {
       throw new Error(`YFinance server error: ${response.status}`);
@@ -441,20 +441,6 @@ export const getStocksFromYFinanceServer = async (): Promise<TrendingStock[]> =>
 };
 
 /**
- * Get trending stocks with their current price and change data, specifically for Indian market
- * @returns Array of trending stock data
- */
-export const getIndianTrendingStocks = async (): Promise<TrendingStock[]> => {
-  try {
-    // First try to fetch from our YFinance server
-    return await getStocksFromYFinanceServer();
-  } catch (error) {
-    console.error('Error fetching from YFinance server, falling back to mock data:', error);
-    return MOCK_INDIAN_STOCKS;
-  }
-};
-
-/**
  * Get real-time stock data from the yfinance server we created
  * @param symbol Stock symbol (e.g., 'AAPL')
  * @returns Real-time stock data
@@ -462,7 +448,7 @@ export const getIndianTrendingStocks = async (): Promise<TrendingStock[]> => {
 export const getRealTimeStockDataFromYFinanceServer = async (symbol: string): Promise<any> => {
   try {
     console.log(`Fetching real-time stock data for ${symbol} from YFinance server`);
-    const response = await fetch(`http://localhost:5001/api/real-time/${symbol}`);
+    const response = await fetch(`http://localhost:5002/api/real-time/${symbol}`);
     
     if (!response.ok) {
       throw new Error(`YFinance server error: ${response.status}`);
@@ -473,6 +459,20 @@ export const getRealTimeStockDataFromYFinanceServer = async (symbol: string): Pr
     console.error(`Error fetching real-time stock data for ${symbol} from YFinance server:`, error);
     // Throw the error up to be handled by the caller
     throw error;
+  }
+};
+
+/**
+ * Get trending stocks with their current price and change data, specifically for Indian market
+ * @returns Array of trending stock data
+ */
+export const getIndianTrendingStocks = async (): Promise<TrendingStock[]> => {
+  try {
+    // First try to fetch from our YFinance server
+    return await getStocksFromYFinanceServer();
+  } catch (error) {
+    console.error('Error fetching from YFinance server, falling back to mock data:', error);
+    return MOCK_INDIAN_STOCKS;
   }
 };
 

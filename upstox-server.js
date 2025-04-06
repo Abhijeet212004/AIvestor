@@ -25,7 +25,7 @@ if (accessToken) {
 }
 
 // Helper function for Upstox API calls
-const callUpstoxApi = async (endpoint, params = {}) => {
+const callUpstoxApi = async (endpoint, params = {}, retryCount = 0) => {
   try {
     if (!apiKey || !accessToken) {
       throw new Error('API credentials not configured');
@@ -50,6 +50,15 @@ const callUpstoxApi = async (endpoint, params = {}) => {
   } catch (error) {
     const errorDetails = error.response?.data || error.message;
     console.error(`API Error (${endpoint}):`, JSON.stringify(errorDetails));
+    
+    // Check if this is an auth error and we haven't retried too many times
+    if (error.response?.status === 401 && retryCount === 0) {
+      console.log("Authentication error detected. Consider refreshing your token via Upstox Developer Portal.");
+      
+      // Here we could implement token refresh logic if you have refresh tokens
+      // For now, we'll just throw the error to trigger fallback behavior
+    }
+    
     throw error;
   }
 };
@@ -201,19 +210,28 @@ app.get('/api/market-data', async (req, res) => {
             }
           }
           
+          // Calculate change and percentage values based on last price and close price
+          const lastPrice = value.last_price || 0;
+          const closePrice = value.close_price || 0;
+          const change = lastPrice - closePrice;
+          const changePercent = closePrice > 0 ? (change / closePrice) * 100 : 0;
+          
           transformedData.data[originalKey] = {
             instrument: {
               exchange: originalKey.split(':')[0] || '',
               name: originalKey.split(':')[1] || originalKey
             },
-            last_price: value.last_price || 0,
-            prev_close: value.close_price || 0,
+            last_price: lastPrice,
+            prev_close: closePrice,
+            change: parseFloat(change.toFixed(2)),
+            change_percent: parseFloat(changePercent.toFixed(2)),
             ohlc: {
               open: value.open_price || 0,
               high: value.high_price || 0,
               low: value.low_price || 0
             },
-            volume: value.volume || 0
+            volume: value.volume || 0,
+            last_updated: new Date().toISOString()
           };
         });
       }
@@ -262,7 +280,8 @@ app.get('/api/market-data', async (req, res) => {
                 exchange: originalKey.split(':')[0] || '',
                 name: originalKey.split(':')[1] || originalKey
               },
-              last_price: value.last_price || 0
+              last_price: value.last_price || 0,
+              last_updated: new Date().toISOString()
             };
           });
         }
@@ -300,6 +319,11 @@ app.get('/api/market-data', async (req, res) => {
         case 'SBIN': basePrice = 775.40; break;
         case 'KOTAKBANK': basePrice = 1835.60; break;
         case 'ITC': basePrice = 445.90; break;
+        case 'BHARTIARTL': basePrice = 1245.60; break;
+        case 'HINDUNILVR': basePrice = 2587.35; break;
+        case 'TATAMOTORS': basePrice = 989.45; break;
+        case 'MARUTI': basePrice = 12450.75; break;
+        case 'WIPRO': basePrice = 452.30; break;
         case 'NIFTY50': basePrice = 24780.75; break;
         case 'NIFTYBANK': basePrice = 48325.15; break;
         default: basePrice = Math.floor(1000 + Math.random() * 4000);
@@ -308,25 +332,32 @@ app.get('/api/market-data', async (req, res) => {
       // Add small random variation to make it look more realistic
       const variation = (Math.random() * 20) - 10; // +/- 10 points
       const lastPrice = parseFloat((basePrice + variation).toFixed(2));
-      const prevClose = parseFloat((basePrice - variation * 0.5).toFixed(2));
+      const prevClose = parseFloat((basePrice - (Math.random() * 5) - 2).toFixed(2));
+      const change = parseFloat((lastPrice - prevClose).toFixed(2));
+      const changePercent = parseFloat(((change / prevClose) * 100).toFixed(2));
+      
       const openPrice = parseFloat((prevClose + (Math.random() * 10) - 5).toFixed(2));
       const highPrice = parseFloat((Math.max(lastPrice, openPrice) + (Math.random() * 15)).toFixed(2));
       const lowPrice = parseFloat((Math.min(lastPrice, openPrice) - (Math.random() * 15)).toFixed(2));
       const volume = Math.floor(100000 + Math.random() * 10000000);
       
+      // Format the mock data in the same structure as the API would return
       mockData.data[instrument] = {
-        instrument: {
-          exchange: exchange,
-          name: symbol
-        },
-        last_price: lastPrice,
-        prev_close: prevClose,
-        ohlc: {
-          open: openPrice,
-          high: highPrice,
-          low: lowPrice
-        },
-        volume: volume
+        SYMBOL: symbol,
+        NAME: `${symbol} Ltd.`,
+        PRICE: lastPrice,
+        CHANGE: change,
+        CHANGE_PERCENT: changePercent,
+        VOLUME: volume.toString(),
+        MARKET_CAP: (basePrice * 10000000).toString(),
+        PREV_CLOSE: prevClose,
+        OPEN: openPrice,
+        HIGH: highPrice,
+        LOW: lowPrice,
+        CLOSE: lastPrice,
+        SECTOR: getStockSector(symbol),
+        timestamp: new Date(),
+        lastUpdated: new Date().toISOString(),
       };
     });
     
@@ -334,6 +365,27 @@ app.get('/api/market-data', async (req, res) => {
     res.json(mockData);
   }
 });
+
+// Helper function to get stock sector
+function getStockSector(symbol) {
+  const sectorMap = {
+    'RELIANCE': 'Oil & Gas',
+    'TCS': 'IT',
+    'HDFCBANK': 'Banking',
+    'ICICIBANK': 'Banking',
+    'INFY': 'IT',
+    'SBIN': 'Banking',
+    'KOTAKBANK': 'Banking',
+    'ITC': 'FMCG',
+    'BHARTIARTL': 'Telecom',
+    'HINDUNILVR': 'FMCG',
+    'TATAMOTORS': 'Automobile',
+    'MARUTI': 'Automobile',
+    'WIPRO': 'IT'
+  };
+  
+  return sectorMap[symbol] || 'Miscellaneous';
+}
 
 // Simple status endpoint
 app.get('/api/status', (req, res) => {
