@@ -712,10 +712,15 @@ function generateHistoricalMockData(instrument, interval, from_date, to_date) {
   return mockData;
 }
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`API Key configured: ${!!apiKey}`);
-  console.log(`Access token configured: ${!!accessToken}`);
-  console.log('Focus: Real-time stock prices via /api/market-data endpoint');
-});
+// Only start the server if this file is run directly (not required as a module)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`API Key configured: ${!!apiKey}`);
+    console.log(`Access token configured: ${!!accessToken}`);
+    console.log('Focus: Real-time stock prices via /api/market-data endpoint');
+  });
+}
+
+// Export the app for use in combined-server.js
+module.exports = app;

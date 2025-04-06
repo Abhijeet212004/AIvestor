@@ -16,6 +16,7 @@ RUN npm install
 COPY stock-data-server.py ./
 COPY finai-assistant/requirements.txt ./requirements.txt
 COPY finai-assistant/server ./server/
+COPY finai-assistant/api ./api/
 
 # Create and activate a Python virtual environment
 RUN python3 -m venv /app/venv
