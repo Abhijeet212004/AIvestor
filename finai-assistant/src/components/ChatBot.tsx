@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { Box, Flex, Text, Input, IconButton, VStack, Avatar, HStack, Spinner, useDisclosure, Button } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSend, FiMic, FiMaximize, FiMinimize, FiX } from 'react-icons/fi';
@@ -15,6 +15,9 @@ import {
   formatNewsAsString,
   NewsArticle 
 } from '../services/newsService';
+import { UserPreferencesContext } from '../contexts/UserPreferencesContext';
+import { PortfolioContext } from '../contexts/PortfolioContext';
+import finnhubService from '../services/finnhubService';
 
 const MotionBox = motion(Box);
 const AnimatedBox = animated(Box);
@@ -367,21 +370,100 @@ User Query: ${userMessage}`;
     try {
       let botResponse: string;
 
-      // Check if the message is a greeting or casual conversation
-      const isJustGreeting = isGreetingOrCasual(inputValue);
+      // Check if the message is asking about a stock price
+      const stockPriceRegex = /(?:what|what's|whats|tell me|show me|get).*(?:price|value|worth|cost|quote).*(?:of|for)\s+([a-zA-Z\s]+)/i;
+      const stockMatch = inputValue.match(stockPriceRegex);
       
-      // Create system prompt based on message type
-      let systemPrompt = '';
-      
-      if (isJustGreeting) {
-        systemPrompt = `You are AIvestor, a friendly and conversational AI financial assistant. 
+      // If it's a stock price query, try to fetch real-time data
+      if (stockMatch && stockMatch[1]) {
+        const stockName = stockMatch[1].trim().toLowerCase();
+        try {
+          // Map of common stock names to symbols
+          const stockSymbolMap: Record<string, string> = {
+            'zomato': 'ZOMATO.NS',
+            'reliance': 'RELIANCE.NS',
+            'tcs': 'TCS.NS',
+            'infosys': 'INFY.NS',
+            'hdfc': 'HDFCBANK.NS',
+            'sbi': 'SBIN.NS',
+            'icici': 'ICICIBANK.NS',
+            'bharti airtel': 'BHARTIARTL.NS',
+            'airtel': 'BHARTIARTL.NS',
+            'itc': 'ITC.NS',
+            'tata motors': 'TATAMOTORS.NS',
+            'maruti': 'MARUTI.NS',
+            'wipro': 'WIPRO.NS',
+            'axis bank': 'AXISBANK.NS',
+            'axis': 'AXISBANK.NS',
+            'kotak': 'KOTAKBANK.NS'
+          };
+          
+          // Get the symbol
+          let symbol = stockSymbolMap[stockName] || `${stockName.replace(/\s+/g, '')}.NS`;
+          
+          console.log(`Attempting to fetch real-time price for symbol: ${symbol}`);
+          const stockData = await finnhubService.getRealTimeStockDataFromYFinanceServer(symbol);
+          
+          if (stockData && stockData.current_price) {
+            const formattedPrice = typeof stockData.current_price === 'number' 
+              ? stockData.current_price.toFixed(2) 
+              : stockData.current_price;
+              
+            const changeText = stockData.change && stockData.percent_change 
+              ? ` (${stockData.change > 0 ? '+' : ''}${typeof stockData.change === 'number' ? stockData.change.toFixed(2) : stockData.change}, ${stockData.percent_change > 0 ? '+' : ''}${typeof stockData.percent_change === 'number' ? stockData.percent_change.toFixed(2) : stockData.percent_change}%)` 
+              : '';
+              
+            const priceResponse = `The current stock price of ${stockData.company_name || stockName.toUpperCase()} is ₹${formattedPrice}${changeText}.`;
+            
+            // Add market cap and volume info if available
+            let additionalInfo = '';
+            if (stockData.market_cap && stockData.market_cap !== 'N/A') {
+              const marketCapInBillions = (stockData.market_cap / 1000000000).toFixed(2);
+              additionalInfo += ` Market Cap: ₹${marketCapInBillions}B.`;
+            }
+            
+            if (stockData.volume && stockData.volume !== 'N/A') {
+              additionalInfo += ` Volume: ${stockData.volume.toLocaleString()}.`;
+            }
+            
+            // Still send to AI for analysis and recommendation
+            const analysisPrompt = `The current stock price of ${stockName.toUpperCase()} is ₹${formattedPrice}${changeText}.${additionalInfo} Based on this information and considering the user's investment profile (${userPreferences?.riskTolerance || 'Moderate'} risk tolerance with ${userPreferences?.investmentHorizon || 'Medium-term'} horizon), provide a brief analysis and recommendation. The user is interested in ${userPreferences?.preferredSectors?.join(', ') || 'various sectors'} and has goals including ${userPreferences?.investmentGoals?.join(', ') || 'general investing'}.`;
+            
+            try {
+              const aiAnalysis = await callVertexAI(analysisPrompt, '', '');
+              botResponse = `${priceResponse}${additionalInfo}\n\n${aiAnalysis}`;
+            } catch (error) {
+              // If AI analysis fails, still return the price
+              console.error("Failed to get AI analysis:", error);
+              botResponse = `${priceResponse}${additionalInfo}\n\nI don't have enough additional information to provide a detailed analysis at this time.`;
+            }
+          } else {
+            // If we couldn't get the price data, proceed with normal AI response
+            console.log("Could not find stock price data, falling back to normal response");
+            botResponse = await callVertexAI(inputValue, '', '');
+          }
+        } catch (stockError) {
+          console.error("Error fetching stock price:", stockError);
+          // Fall back to normal AI processing
+          botResponse = await callVertexAI(inputValue, '', '');
+        }
+      } else {
+        // Check if the message is a greeting or casual conversation
+        const greetingRegex = /^(hi|hello|hey|greetings|howdy|hola|sup|yo|what's up|how are you|good morning|good afternoon|good evening)$/i;
+        const isJustGreeting = greetingRegex.test(inputValue.trim());
+
+        // Create system prompt based on message type
+        let systemPrompt = '';
+        
+        if (isJustGreeting) {
+          systemPrompt = `You are AIvestor, a friendly and conversational AI financial assistant. 
 Respond to this greeting in a warm, casual way. Do not give investment advice unless explicitly asked.
 Keep your response short and engaging. You could ask if they're interested in learning about investments, 
 but don't immediately dive into financial topics.
 
 Respond in well-formatted text with proper spacing between paragraphs. Keep it concise.`;
-      } else {
-        systemPrompt = `You are AIvestor, a decisive financial analyst and investment advisor for Indian investors.
+        } else {
+          systemPrompt = `You are AIvestor, a decisive financial analyst and investment advisor for Indian investors.
 When users ask about specific stocks or investment decisions, provide DIRECT and CLEAR recommendations.
 
 IMPORTANT: 
@@ -403,122 +485,122 @@ For formatting:
 4. For Indian stocks, include NSE/BSE ticker symbols
 
 For Indian market questions, provide specific names of actual mutual funds and ETFs available in India.`;
-      }
+        }
 
-      // Format user preferences in a more structured way
-      let userPreferencesText = '';
-      if (userPreferences && !isJustGreeting) {
-        userPreferencesText = 'User preferences:\n';
-        if (userPreferences.investmentGoals && userPreferences.investmentGoals.length > 0) {
-          userPreferencesText += `- Investment goals: ${userPreferences.investmentGoals.join(', ')}\n`;
+        // Format user preferences in a more structured way
+        let userPreferencesText = '';
+        if (userPreferences && !isJustGreeting) {
+          userPreferencesText = 'User preferences:\n';
+          if (userPreferences.investmentGoals && userPreferences.investmentGoals.length > 0) {
+            userPreferencesText += `- Investment goals: ${userPreferences.investmentGoals.join(', ')}\n`;
+          }
+          if (userPreferences.riskTolerance) {
+            userPreferencesText += `- Risk tolerance: ${userPreferences.riskTolerance}\n`;
+          }
+          if (userPreferences.investmentHorizon) {
+            userPreferencesText += `- Investment horizon: ${userPreferences.investmentHorizon}\n`;
+          }
+          if (userPreferences.preferredSectors && userPreferences.preferredSectors.length > 0) {
+            userPreferencesText += `- Preferred sectors: ${userPreferences.preferredSectors.join(', ')}\n`;
+          }
+          if (userPreferences.preferredAssetClasses && userPreferences.preferredAssetClasses.length > 0) {
+            userPreferencesText += `- Preferred asset classes: ${userPreferences.preferredAssetClasses.join(', ')}\n`;
+          }
+        } else if (!isJustGreeting) {
+          // Provide default guidance if no preferences set
+          userPreferencesText = 'User has not set specific investment preferences yet. Provide general advice and suggest setting up a profile.';
         }
-        if (userPreferences.riskTolerance) {
-          userPreferencesText += `- Risk tolerance: ${userPreferences.riskTolerance}\n`;
-        }
-        if (userPreferences.investmentHorizon) {
-          userPreferencesText += `- Investment horizon: ${userPreferences.investmentHorizon}\n`;
-        }
-        if (userPreferences.preferredSectors && userPreferences.preferredSectors.length > 0) {
-          userPreferencesText += `- Preferred sectors: ${userPreferences.preferredSectors.join(', ')}\n`;
-        }
-        if (userPreferences.preferredAssetClasses && userPreferences.preferredAssetClasses.length > 0) {
-          userPreferencesText += `- Preferred asset classes: ${userPreferences.preferredAssetClasses.join(', ')}\n`;
-        }
-      } else if (!isJustGreeting) {
-        // Provide default guidance if no preferences set
-        userPreferencesText = 'User has not set specific investment preferences yet. Provide general advice and suggest setting up a profile.';
-      }
 
-      // Get relevant news data
-      let relevantNewsText = '';
-      if (!isJustGreeting) {
-        try {
-          console.log("Fetching relevant news for query:", inputValue);
-          relevantNewsText = await getRelevantNews(inputValue);
-          console.log("Got news data:", relevantNewsText.substring(0, 100) + "...");
-        } catch (error) {
-          console.error("Error fetching news:", error);
-          relevantNewsText = "Unable to fetch latest news at this time.";
+        // Get relevant news data
+        let relevantNewsText = '';
+        if (!isJustGreeting) {
+          try {
+            console.log("Fetching relevant news for query:", inputValue);
+            relevantNewsText = await getRelevantNews(inputValue);
+            console.log("Got news data:", relevantNewsText.substring(0, 100) + "...");
+          } catch (error) {
+            console.error("Error fetching news:", error);
+            relevantNewsText = "Unable to fetch latest news at this time.";
+          }
         }
-      }
 
-      // Update systemPrompt to include news data
-      systemPrompt += `\n\nLatest relevant news for context:
+        // Update systemPrompt to include news data
+        systemPrompt += `\n\nLatest relevant news for context:
 ${relevantNewsText}
 
 Consider this news data when providing your financial analysis and recommendations. Use the most relevant pieces to support your advice.`;
 
-      console.log("Sending request to Vertex API with prompt:", `${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
-      
-      // For non-greetings, use the advanced Flask API first, then fall back to the direct Gemini model
-      if (!isJustGreeting) {
-        try {
-          // Use the main Vertex AI endpoint instead of the test endpoint
-          botResponse = await callVertexAI(inputValue, relevantNewsText, systemPrompt);
-          botResponse = improvedFormatResponseText(botResponse);
-        } catch (error) {
-          console.error("Error with Flask API:", error);
-          
+        console.log("Sending request to Vertex API with prompt:", `${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
+        
+        // For non-greetings, use the advanced Flask API first, then fall back to the direct Gemini model
+        if (!isJustGreeting) {
           try {
-            // Then try the JavaScript implementation (with renamed function)
-            botResponse = await getAdvancedModelResponse(inputValue);
-            botResponse = improvedFormatResponseText(botResponse);
+            // Use the main Vertex AI endpoint instead of the test endpoint
+            botResponse = await callVertexAI(inputValue, relevantNewsText, systemPrompt);
+            botResponse = formatResponseText(botResponse);
           } catch (error) {
-            console.error("Error with advanced model:", error);
+            console.error("Error with Flask API:", error);
             
-            // Finally fall back to the basic Gemini model
-            console.log("Falling back to basic Gemini API");
-            const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
-            const model = genAI.getGenerativeModel({ 
-              model: "gemini-1.5-pro",
-              generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 1024,
-              }
-            });
-            const result = await model.generateContent(`${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
-            botResponse = result.response.text();
+            try {
+              // Then try the JavaScript implementation (with renamed function)
+              botResponse = await getAdvancedModelResponse(inputValue);
+              botResponse = formatResponseText(botResponse);
+            } catch (error) {
+              console.error("Error with advanced model:", error);
+              
+              // Finally fall back to the basic Gemini model
+              console.log("Falling back to basic Gemini API");
+              const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
+              const model = genAI.getGenerativeModel({ 
+                model: "gemini-1.5-pro",
+                generationConfig: {
+                  temperature: 0.7,
+                  maxOutputTokens: 1024,
+                }
+              });
+              const result = await model.generateContent(`${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
+              botResponse = result.response.text();
+            }
           }
+        } else {
+          // For greetings, continue using the simple model directly
+          const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
+          const model = genAI.getGenerativeModel({ 
+            model: "gemini-1.5-pro",
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1024,
+            }
+          });
+          const result = await model.generateContent(`${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
+          botResponse = result.response.text();
         }
-      } else {
-        // For greetings, continue using the simple model directly
-        const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
-        const model = genAI.getGenerativeModel({ 
-          model: "gemini-1.5-pro",
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 1024,
-          }
-        });
-        const result = await model.generateContent(`${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
-        botResponse = result.response.text();
+
+        // Add bot response
+        const botMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: botResponse,
+          sender: 'bot',
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => [...prev, botMessage]);
+      } catch (error) {
+        console.error("Error getting AI response:", error);
+
+        // Add a more descriptive error message
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          text: `I'm sorry, I encountered an error processing your request. Technical details: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+          sender: 'bot',
+          timestamp: new Date(),
+        };
+
+        setMessages((prev) => [...prev, errorMessage]);
+      } finally {
+        setIsTyping(false);
       }
-
-      // Add bot response
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: botResponse,
-        sender: 'bot',
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
-      console.error("Error getting AI response:", error);
-
-      // Add a more descriptive error message
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: `I'm sorry, I encountered an error processing your request. Technical details: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
-        sender: 'bot',
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsTyping(false);
-    }
-  };
+    };
 
   // Improved formatting function to handle markdown and ensure better display
   const improvedFormatResponseText = (text: string): string => {

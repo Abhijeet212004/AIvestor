@@ -105,11 +105,11 @@ const DiscoveryPage: React.FC = () => {
       risk: Math.min(5, Math.max(1, Math.ceil(Math.abs(stock.percentChange)))),
       term: 'medium',
       returnRate: { 
-        '1d': parseFloat(stock.percentChange.toFixed(2)), 
-        '1y': parseFloat((stock.percentChange * 5).toFixed(2)), // Simulated yearly projection
-        '5y': parseFloat((stock.percentChange * 15).toFixed(2)), // Simulated 5-year projection
+        '1d': parseFloat(stock.percentChange !== undefined ? stock.percentChange.toFixed(2) : '0'), 
+        '1y': parseFloat((stock.percentChange !== undefined ? stock.percentChange * 5 : 0).toFixed(2)), // Simulated yearly projection
+        '5y': parseFloat((stock.percentChange !== undefined ? stock.percentChange * 15 : 0).toFixed(2)), // Simulated 5-year projection
       },
-      description: `${stock.name || stock.symbol} stock trading at ${CURRENCY_SYMBOL}${stock.currentPrice.toFixed(2)} with a market cap of ${(stock.marketCap ? (stock.marketCap / 1000000000).toFixed(2) + 'B' : 'N/A')}.`,
+      description: `${stock.name || stock.symbol} stock trading at ${CURRENCY_SYMBOL}${stock.currentPrice !== undefined ? stock.currentPrice.toFixed(2) : '0.00'} with a market cap of ${(stock.marketCap ? (stock.marketCap / 1000000000).toFixed(2) + 'B' : 'N/A')}.`,
       tags: [stock.percentChange > 0 ? 'Gaining' : 'Declining', 'Individual Stock', stock.marketCap && stock.marketCap > 100000000000 ? 'Large Cap' : 'Mid Cap'],
       rating: 3 + (stock.percentChange > 0 ? 1.5 : -0.5),
       holdings: [],
