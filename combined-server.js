@@ -23,6 +23,61 @@ const upstoxApp = require('./upstox-server');
 app.use('/upstox', upstoxApp);
 console.log('Upstox routes initialized');
 
+// Add compatibility routes for frontend that expects /api/* endpoints
+app.use('/api/market-data', (req, res) => {
+  // Forward to the upstox server's market data endpoint
+  const url = `http://localhost:${PORT}/upstox/api/market-data${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
+  
+  const options = {
+    method: req.method,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
+  };
+
+  fetch(url, options)
+    .then(response => response.json())
+    .then(data => res.json(data))
+    .catch(error => {
+      console.error('Error forwarding to upstox market data:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    });
+});
+
+// Also add historical data endpoint for compatibility
+app.use('/api/historical-data', (req, res) => {
+  const url = `http://localhost:${PORT}/upstox/api/historical-data${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
+  
+  const options = {
+    method: req.method,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
+  };
+
+  fetch(url, options)
+    .then(response => response.json())
+    .then(data => res.json(data))
+    .catch(error => {
+      console.error('Error forwarding to upstox historical data:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    });
+});
+
+// Root route for API information
+app.get('/', (req, res) => {
+  res.json({
+    status: 'online',
+    message: 'AIvestor API is running. Please connect from the frontend application.',
+    endpoints: {
+      upstox: '/upstox/*',
+      stockData: '/stock-api/*',
+      chatbot: '/chatbot-api/*'
+    }
+  });
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
