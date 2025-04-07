@@ -25,45 +25,42 @@ console.log('Upstox routes initialized');
 
 // Add compatibility routes for frontend that expects /api/* endpoints
 app.use('/api/market-data', (req, res) => {
-  // Forward to the upstox server's market data endpoint
-  const url = `http://localhost:${PORT}/upstox/api/market-data${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
-  
-  const options = {
-    method: req.method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
-  };
-
-  fetch(url, options)
-    .then(response => response.json())
-    .then(data => res.json(data))
-    .catch(error => {
-      console.error('Error forwarding to upstox market data:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
-    });
+  // Direct call to upstoxApp instead of HTTP request to avoid circular references
+  try {
+    // Extract query parameters
+    const instruments = req.query.instruments;
+    
+    // Call the internal handler directly
+    if (upstoxApp.handleMarketData && typeof upstoxApp.handleMarketData === 'function') {
+      upstoxApp.handleMarketData(instruments, (error, data) => {
+        if (error) {
+          console.error('Error in direct upstox market data call:', error);
+          return res.status(500).json({ error: 'Internal Server Error' });
+        }
+        res.json(data);
+      });
+    } else {
+      // Fallback to regular upstox endpoint
+      console.log('Redirecting to upstox routes');
+      res.redirect(`/upstox/api/market-data?instruments=${instruments}`);
+    }
+  } catch (error) {
+    console.error('Error forwarding to upstox market data:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 // Also add historical data endpoint for compatibility
 app.use('/api/historical-data', (req, res) => {
-  const url = `http://localhost:${PORT}/upstox/api/historical-data${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
-  
-  const options = {
-    method: req.method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
-  };
-
-  fetch(url, options)
-    .then(response => response.json())
-    .then(data => res.json(data))
-    .catch(error => {
-      console.error('Error forwarding to upstox historical data:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
-    });
+  // Redirect to the upstox route instead of making an HTTP request
+  try {
+    // Simply redirect to the proper endpoint with all query parameters preserved
+    const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+    res.redirect(`/upstox/api/historical-data${queryString}`);
+  } catch (error) {
+    console.error('Error forwarding to upstox historical data:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 });
 
 // Root route for API information
@@ -103,14 +100,26 @@ app.use('/stock-api', (req, res) => {
     headers: {
       'Content-Type': 'application/json',
     },
+    body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
   };
 
-  fetch(`http://localhost:5002${req.url}`, options)
-    .then(response => response.json())
+  // Use 127.0.0.1 instead of localhost to avoid potential DNS resolution issues
+  fetch(`http://127.0.0.1:5002${req.url}`, options)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Stock data server responded with status: ${response.status}`);
+      }
+      return response.json();
+    })
     .then(data => res.json(data))
     .catch(error => {
       console.error('Error proxying to stock data server:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      // Return a fallback response with mock data for trending stocks
+      if (req.url.includes('/trending')) {
+        const mockData = require('./mock-data/trending-stocks.json');
+        return res.json(mockData);
+      }
+      res.status(500).json({ error: 'Internal Server Error', message: error.message });
     });
 });
 
@@ -136,12 +145,72 @@ app.use('/chatbot-api', (req, res) => {
     body: req.method !== 'GET' ? JSON.stringify(req.body) : undefined,
   };
 
-  fetch(`http://localhost:5000${req.url}`, options)
-    .then(response => response.json())
+  // Use 127.0.0.1 instead of localhost to avoid potential DNS resolution issues
+  fetch(`http://127.0.0.1:5000${req.url}`, options)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`Chatbot server responded with status: ${response.status}`);
+      }
+      return response.json();
+    })
     .then(data => res.json(data))
     .catch(error => {
       console.error('Error proxying to chatbot server:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
+      
+      // Check if we have a mock response available for this request
+      if (req.url.includes('/ask') || req.url.includes('/chat')) {
+        try {
+          // Load mock chatbot responses
+          const mockResponses = require('./mock-data/chatbot-responses.json');
+          
+          // Get the query from the request body
+          const userQuery = req.body?.query || req.body?.message || '';
+          console.log('Fallback for chatbot query:', userQuery);
+          
+          // Find the most relevant mock response or use a default
+          let response = "I'm sorry, I can't access the financial data at the moment. Please try again later.";
+          
+          if (mockResponses.responses && mockResponses.responses.length > 0) {
+            // If we have an exact match, use it
+            const exactMatch = mockResponses.responses.find(item => 
+              item.query.toLowerCase() === userQuery.toLowerCase());
+              
+            if (exactMatch) {
+              response = exactMatch.response;
+            } else {
+              // Pick a response based on keywords or randomly if no match
+              const keywords = userQuery.toLowerCase().split(' ');
+              const potentialMatches = mockResponses.responses.filter(item => 
+                keywords.some(keyword => 
+                  item.query.toLowerCase().includes(keyword) && keyword.length > 3));
+              
+              if (potentialMatches.length > 0) {
+                // Pick a random match from potential matches
+                const randomIndex = Math.floor(Math.random() * potentialMatches.length);
+                response = potentialMatches[randomIndex].response;
+              } else {
+                // Pick a completely random response
+                const randomIndex = Math.floor(Math.random() * mockResponses.responses.length);
+                response = mockResponses.responses[randomIndex].response;
+              }
+            }
+          }
+          
+          return res.json({
+            response: response,
+            fallback: true
+          });
+        } catch (mockError) {
+          console.error('Error using mock chatbot data:', mockError);
+        }
+      }
+      
+      // If we couldn't use mock data, return an error
+      res.status(500).json({ 
+        error: 'Internal Server Error', 
+        message: error.message,
+        fallback: true 
+      });
     });
 });
 

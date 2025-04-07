@@ -1,0 +1,92 @@
+[
+  {
+    "symbol": "RELIANCE.NS",
+    "company_name": "Reliance Industries Ltd",
+    "change": 15.25,
+    "percent_change": 0.65,
+    "current_price": 2372.80,
+    "volume": 7654321,
+    "market_cap": 14875000000000
+  },
+  {
+    "symbol": "TCS.NS",
+    "company_name": "Tata Consultancy Services Ltd",
+    "change": -12.50,
+    "percent_change": -0.38,
+    "current_price": 3250.75,
+    "volume": 2345678,
+    "market_cap": 11920000000000
+  },
+  {
+    "symbol": "HDFCBANK.NS",
+    "company_name": "HDFC Bank Ltd",
+    "change": 22.10,
+    "percent_change": 1.42,
+    "current_price": 1589.65,
+    "volume": 5678901,
+    "market_cap": 8950000000000
+  },
+  {
+    "symbol": "INFY.NS",
+    "company_name": "Infosys Ltd",
+    "change": -8.60,
+    "percent_change": -0.58,
+    "current_price": 1472.30,
+    "volume": 3456789,
+    "market_cap": 6230000000000
+  },
+  {
+    "symbol": "ICICIBANK.NS",
+    "company_name": "ICICI Bank Ltd",
+    "change": 9.35,
+    "percent_change": 1.15,
+    "current_price": 825.40,
+    "volume": 4567890,
+    "market_cap": 5780000000000
+  },
+  {
+    "symbol": "SBIN.NS",
+    "company_name": "State Bank of India",
+    "change": 6.75,
+    "percent_change": 1.28,
+    "current_price": 534.25,
+    "volume": 6789012,
+    "market_cap": 4890000000000
+  },
+  {
+    "symbol": "BHARTIARTL.NS",
+    "company_name": "Bharti Airtel Ltd",
+    "change": -3.45,
+    "percent_change": -0.42,
+    "current_price": 828.55,
+    "volume": 2345678,
+    "market_cap": 4650000000000
+  },
+  {
+    "symbol": "KOTAKBANK.NS",
+    "company_name": "Kotak Mahindra Bank Ltd",
+    "change": 11.85,
+    "percent_change": 0.78,
+    "current_price": 1537.90,
+    "volume": 1234567,
+    "market_cap": 3050000000000
+  },
+  {
+    "symbol": "LT.NS",
+    "company_name": "Larsen & Toubro Ltd",
+    "change": 24.60,
+    "percent_change": 1.13,
+    "current_price": 2204.85,
+    "volume": 1456789,
+    "market_cap": 3020000000000
+  },
+  {
+    "symbol": "AXISBANK.NS",
+    "company_name": "Axis Bank Ltd",
+    "change": -5.20,
+    "percent_change": -0.61,
+    "current_price": 844.50,
+    "volume": 3456789,
+    "market_cap": 2600000000000
+  }
+]

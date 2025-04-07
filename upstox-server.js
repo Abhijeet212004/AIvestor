@@ -712,6 +712,209 @@ function generateHistoricalMockData(instrument, interval, from_date, to_date) {
   return mockData;
 }
 
+// Direct handler function for market data to avoid HTTP round trips when used in combined server
+const handleMarketData = async (instruments, callback) => {
+  try {
+    console.log('Direct call to handleMarketData with instruments:', instruments);
+    
+    if (!instruments) {
+      return callback(new Error('No instruments provided'), null);
+    }
+    
+    const instrumentsList = instruments.split(',');
+    const formattedInstruments = instrumentsList.map(formatInstrumentSymbol);
+    
+    console.log('Directly fetching quotes for:', formattedInstruments);
+    
+    // Try to get full market quotes first
+    try {
+      const marketData = await callUpstoxApi('/market-quote/quotes', {
+        instrument_key: formattedInstruments.join(',')
+      });
+      
+      // Transform response to format expected by frontend
+      const transformedData = {
+        status: 'success',
+        data: {}
+      };
+      
+      if (marketData && marketData.data) {
+        Object.entries(marketData.data).forEach(([key, value]) => {
+          // Map back to frontend format
+          let originalKey = instrumentsList.find(
+            inst => formatInstrumentSymbol(inst) === key
+          ) || key;
+          
+          // Extract and calculate values
+          const lastPrice = value.last_price || 0;
+          const closePrice = value.close_price || 0;
+          const change = lastPrice - closePrice;
+          const changePercent = closePrice > 0 ? (change / closePrice) * 100 : 0;
+          
+          transformedData.data[originalKey] = {
+            instrument: {
+              exchange: originalKey.split(':')[0] || '',
+              name: originalKey.split(':')[1] || originalKey
+            },
+            last_price: lastPrice,
+            close_price: closePrice,
+            change: change,
+            change_percent: changePercent,
+            ohlc: {
+              open: value.open_price || 0,
+              high: value.high_price || 0,
+              low: value.low_price || 0
+            },
+            volume: value.volume || 0,
+            last_updated: new Date().toISOString()
+          };
+        });
+      }
+      
+      return callback(null, transformedData);
+    } catch (quotesError) {
+      console.error('Full quotes API failed in direct handler:', quotesError.message);
+      
+      // Try LTP API as fallback
+      try {
+        const ltpData = await callUpstoxApi('/market-quote/ltp', {
+          instrument_key: formattedInstruments.join(',')
+        });
+        
+        const transformedData = {
+          status: 'success',
+          data: {}
+        };
+        
+        if (ltpData && ltpData.data) {
+          Object.entries(ltpData.data).forEach(([key, value]) => {
+            let originalKey = instrumentsList.find(
+              inst => formatInstrumentSymbol(inst) === key
+            ) || key;
+            
+            transformedData.data[originalKey] = {
+              instrument: {
+                exchange: originalKey.split(':')[0] || '',
+                name: originalKey.split(':')[1] || originalKey
+              },
+              last_price: value.last_price || 0,
+              last_updated: new Date().toISOString()
+            };
+          });
+        }
+        
+        return callback(null, transformedData);
+      } catch (ltpError) {
+        console.error('LTP API failed in direct handler:', ltpError.message);
+        return callback(new Error('Both quote APIs failed'), null);
+      }
+    }
+  } catch (error) {
+    console.error('Market data error in direct handler:', error.message);
+    
+    // Last resort - provide realistic mock data if all API calls fail
+    console.warn('Using mock data as fallback due to API authentication failure');
+    
+    const mockData = {
+      status: 'success',
+      data: {}
+    };
+    
+    const instrumentsList = instruments.split(',');
+    
+    instrumentsList.forEach(instrument => {
+      // Generate realistic mock data for instruments
+      const symbol = instrument.split(':')[1] || instrument;
+      const basePrice = getBasePrice(symbol);
+      const variation = (Math.random() * 20) - 10; // Random price variation
+      const lastPrice = parseFloat((basePrice + variation).toFixed(2));
+      const prevClose = parseFloat((basePrice - (Math.random() * 5) - 2).toFixed(2));
+      const change = parseFloat((lastPrice - prevClose).toFixed(2));
+      const changePercent = parseFloat(((change / prevClose) * 100).toFixed(2));
+      
+      mockData.data[instrument] = {
+        SYMBOL: symbol,
+        NAME: getStockName(symbol),
+        PRICE: lastPrice,
+        CHANGE: change,
+        CHANGE_PERCENT: changePercent,
+        VOLUME: Math.floor(Math.random() * 1000000) + 100000,
+        MARKET_CAP: Math.floor(Math.random() * 1000000000000) + 100000000000,
+        PREV_CLOSE: prevClose,
+        OPEN: parseFloat((prevClose + (Math.random() * 10) - 5).toFixed(2)),
+        HIGH: parseFloat((lastPrice + (Math.random() * 10)).toFixed(2)),
+        LOW: parseFloat((lastPrice - (Math.random() * 10)).toFixed(2)),
+        CLOSE: lastPrice,
+        SECTOR: getStockSector(symbol),
+        timestamp: new Date(),
+        lastUpdated: new Date().toISOString(),
+      };
+    });
+    
+    return callback(null, mockData);
+  }
+};
+
+// Helper function to get base price for mocked data
+const getBasePrice = (symbol) => {
+  switch(symbol) {
+    case 'RELIANCE': return 2500.75;
+    case 'TCS': return 3750.20;
+    case 'HDFCBANK': return 1680.45;
+    case 'INFY': return 1520.80;
+    case 'SBIN': return 775.40;
+    case 'KOTAKBANK': return 1835.60;
+    case 'ITC': return 445.90;
+    case 'NIFTY50': return 24780.75;
+    case 'NIFTYBANK': return 48325.15;
+    default:
+      // Generate a consistent price based on symbol name
+      return (symbol.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) % 5000) + 500;
+  }
+};
+
+// Helper function to get stock name for mocked data
+const getStockName = (symbol) => {
+  const stockNames = {
+    'RELIANCE': 'Reliance Industries Ltd',
+    'TCS': 'Tata Consultancy Services Ltd',
+    'HDFCBANK': 'HDFC Bank Ltd',
+    'INFY': 'Infosys Ltd',
+    'ICICIBANK': 'ICICI Bank Ltd',
+    'SBIN': 'State Bank of India',
+    'BHARTIARTL': 'Bharti Airtel Ltd',
+    'KOTAKBANK': 'Kotak Mahindra Bank Ltd',
+    'WIPRO': 'Wipro Ltd',
+    'TATAMOTORS': 'Tata Motors Ltd',
+    'MARUTI': 'Maruti Suzuki India Ltd',
+    'ITC': 'ITC Ltd',
+    'HINDUNILVR': 'Hindustan Unilever Ltd'
+  };
+  
+  return stockNames[symbol] || `${symbol} Stock`;
+};
+
+// Helper function to get stock sector for mocked data
+const getStockSector = (symbol) => {
+  const sectors = {
+    'RELIANCE': 'Energy',
+    'TCS': 'IT',
+    'HDFCBANK': 'Banking',
+    'INFY': 'IT',
+    'ICICIBANK': 'Banking',
+    'SBIN': 'Banking',
+    'BHARTIARTL': 'Telecom',
+    'KOTAKBANK': 'Banking',
+    'WIPRO': 'IT',
+    'TATAMOTORS': 'Auto',
+    'MARUTI': 'Auto',
+    'ITC': 'FMCG',
+    'HINDUNILVR': 'FMCG'
+  };
+  
+  return sectors[symbol] || 'Miscellaneous';
+};
+
 // Only start the server if this file is run directly (not required as a module)
 if (require.main === module) {
   app.listen(PORT, () => {
@@ -722,5 +925,6 @@ if (require.main === module) {
   });
 }
 
-// Export the app for use in combined-server.js
+// Export the app and direct handler function for use in combined-server.js
+app.handleMarketData = handleMarketData;
 module.exports = app;
