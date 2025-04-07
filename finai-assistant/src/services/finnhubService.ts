@@ -415,7 +415,7 @@ export const getTrendingStocks = async (symbols: string[] = []): Promise<Trendin
 export const getStocksFromYFinanceServer = async (): Promise<TrendingStock[]> => {
   try {
     console.log('Fetching Indian stocks from YFinance server');
-    const response = await fetch('http://localhost:5002/api/trending');
+    const response = await fetch('https://aivestor-5.onrender.com/stock-api/trending');
     
     if (!response.ok) {
       throw new Error(`YFinance server error: ${response.status}`);
@@ -448,7 +448,7 @@ export const getStocksFromYFinanceServer = async (): Promise<TrendingStock[]> =>
 export const getRealTimeStockDataFromYFinanceServer = async (symbol: string): Promise<any> => {
   try {
     console.log(`Fetching real-time stock data for ${symbol} from YFinance server`);
-    const response = await fetch(`http://localhost:5002/api/real-time/${symbol}`);
+    const response = await fetch(`https://aivestor-5.onrender.com/stock-api/real-time/${symbol}`);
     
     if (!response.ok) {
       throw new Error(`YFinance server error: ${response.status}`);

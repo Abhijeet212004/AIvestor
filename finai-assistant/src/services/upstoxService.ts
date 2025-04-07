@@ -1,7 +1,7 @@
 import { MarketStock, StockHistoryData } from '../types/stock';
 
-// API endpoints - Using our upstox-server implementation
-const API_BASE_URL = 'http://localhost:5001'; // Updated to match server port
+// API endpoints - Using our deployed backend URL
+const API_BASE_URL = 'https://aivestor-5.onrender.com'; // Updated to use the deployed backend URL
 const MARKET_DATA_ENDPOINT = `${API_BASE_URL}/api/market-data`;
 const HISTORICAL_DATA_ENDPOINT = `${API_BASE_URL}/api/historical-data`;
 const API_STATUS_ENDPOINT = `${API_BASE_URL}/api/status`;
