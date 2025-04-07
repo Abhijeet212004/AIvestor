@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useContext } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Box, Flex, Text, Input, IconButton, VStack, Avatar, HStack, Spinner, useDisclosure, Button } from '@chakra-ui/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSend, FiMic, FiMaximize, FiMinimize, FiX } from 'react-icons/fi';
@@ -15,13 +15,12 @@ import {
   formatNewsAsString,
   NewsArticle 
 } from '../services/newsService';
-import { UserPreferencesContext } from '../contexts/UserPreferencesContext';
-import { PortfolioContext } from '../contexts/PortfolioContext';
 import finnhubService from '../services/finnhubService';
 
 const MotionBox = motion(Box);
 const AnimatedBox = animated(Box);
 
+// Interface for message objects
 interface Message {
   id: string;
   text: string;
@@ -39,6 +38,8 @@ interface UserPreferences {
 }
 
 const ChatBot: React.FC = () => {
+  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -50,7 +51,6 @@ const ChatBot: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure({ defaultIsOpen: true });
@@ -63,7 +63,7 @@ const ChatBot: React.FC = () => {
 
   // Initialize and fetch user preferences
   useEffect(() => {
-    // Fetch user preferences
+    // Fetch user preferences from Firebase
     const fetchUserPreferences = async () => {
       try {
         // Replace 'currentUserId' with actual user ID from your auth system
@@ -72,6 +72,7 @@ const ChatBot: React.FC = () => {
         
         if (userDoc.exists()) {
           setUserPreferences(userDoc.data() as UserPreferences);
+          console.log("Loaded user preferences from Firebase:", userDoc.data());
         } else {
           // Set sample preferences for testing if user has none
           setUserPreferences({
@@ -81,6 +82,7 @@ const ChatBot: React.FC = () => {
             preferredSectors: ['Technology', 'Healthcare'],
             preferredAssetClasses: ['Stocks', 'ETFs', 'Bonds']
           });
+          console.log("Set default user preferences");
         }
       } catch (error) {
         console.error("Error fetching user preferences:", error);
@@ -92,6 +94,7 @@ const ChatBot: React.FC = () => {
           preferredSectors: ['Technology'],
           preferredAssetClasses: ['ETFs']
         });
+        console.log("Set fallback user preferences after error");
       }
     };
     
@@ -129,197 +132,200 @@ const ChatBot: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Helper functions for chatbot 
+  // Get relevant news for the query
+  const getRelevantNews = async (query: string): Promise<string> => {
+    try {
+      // First try direct company news if it appears to be a query about a company
+      const companyNameRegex = /(apple|microsoft|google|amazon|facebook|meta|tesla|nvidia|amd|intel|reliance|tcs|infosys|hdfc|sbi|icici|bharti|airtel|zomato)/i;
+      const companyMatch = query.match(companyNameRegex);
+      
+      if (companyMatch && companyMatch[1]) {
+        try {
+          const companyName = companyMatch[1].toLowerCase();
+          console.log(`Fetching news for company: ${companyName}`);
+          // Map common company names to their stock symbols
+          const companySymbolMap: Record<string, string> = {
+            'apple': 'AAPL',
+            'microsoft': 'MSFT',
+            'google': 'GOOGL',
+            'amazon': 'AMZN',
+            'facebook': 'META',
+            'meta': 'META',
+            'tesla': 'TSLA',
+            'nvidia': 'NVDA',
+            'amd': 'AMD',
+            'intel': 'INTC',
+            'reliance': 'RELIANCE.NS',
+            'tcs': 'TCS.NS',
+            'infosys': 'INFY.NS',
+            'hdfc': 'HDFCBANK.NS',
+            'sbi': 'SBIN.NS',
+            'icici': 'ICICIBANK.NS',
+            'bharti': 'BHARTIARTL.NS',
+            'airtel': 'BHARTIARTL.NS',
+            'zomato': 'ZOMATO.NS'
+          };
+          
+          const symbol = companySymbolMap[companyName] || companyName.toUpperCase();
+          const companyNews = await fetchCompanyNews(symbol);
+          
+          if (companyNews && companyNews.length > 0) {
+            return formatNewsAsString(companyNews);
+          }
+        } catch (error) {
+          console.error("Error fetching company specific news:", error);
+          // Fall through to general news
+        }
+      }
+      
+      // Try to get financial news based on query
+      const newsArticles = await fetchFinancialNews(query);
+      if (newsArticles && newsArticles.length > 0) {
+        return formatNewsAsString(newsArticles);
+      }
+      
+      // Fall back to business headlines if no specific news
+      const headlines = await fetchBusinessHeadlines();
+      return formatNewsAsString(headlines);
+    } catch (error) {
+      console.error("Failed to get news:", error);
+      return "Unable to fetch relevant news at this time.";
+    }
+  };
+
+  // Call the Flask API to get AI response
+  const callVertexAI = async (userQuery: string, newsContext: string = '', systemPrompt: string = ''): Promise<string> => {
+    try {
+      // Use the API with Flask backend
+      const response = await fetch('https://aivestor-5.onrender.com/chatbot-api/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userMessage: userQuery,
+          newsContext: newsContext,
+          systemPrompt: systemPrompt,
+          userPreferences: userPreferences || {} // Send preferences if available
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (data && data.response) {
+        return data.response;
+      } else {
+        throw new Error("Invalid response format");
+      }
+    } catch (error) {
+      console.error("Error calling vertex AI:", error);
+      throw error;
+    }
+  };
+
+  // Get response from advanced model (JavaScript implementation) as backup
+  const getAdvancedModelResponse = async (userQuery: string): Promise<string> => {
+    try {
+      const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-pro",
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1024,
+        }
+      });
+      
+      // Create system prompt
+      let systemPrompt = `You are AIvestor, a decisive financial analyst and investment advisor for Indian investors.
+
+When users ask about specific stocks or investment decisions, provide DIRECT and CLEAR recommendations.
+
+IMPORTANT: 
+1. Always end with a SPECIFIC, ACTIONABLE recommendation (BUY, SELL, or HOLD)
+2. Format your advice consistently like this at the end:
+
+Recommendation: [BUY/SELL/HOLD] (with reason)
+
+3. Answer directly without hedging or excessive disclaimers
+
+For specific investment questions, prioritize:
+1. Clear analysis based on current market conditions in India
+2. Direct recommendation on action to take
+3. Reasoning behind the recommendation
+4. For Indian stocks, include NSE/BSE ticker symbols
+
+For Indian market questions, provide specific names of actual mutual funds and ETFs available in India.`;
+
+      // Format user preferences
+      let userPreferencesText = '';
+      if (userPreferences) {
+        userPreferencesText = 'User preferences:\n';
+        if (userPreferences.investmentGoals && userPreferences.investmentGoals.length > 0) {
+          userPreferencesText += `- Investment goals: ${userPreferences.investmentGoals.join(', ')}\n`;
+        }
+        if (userPreferences.riskTolerance) {
+          userPreferencesText += `- Risk tolerance: ${userPreferences.riskTolerance}\n`;
+        }
+        if (userPreferences.investmentHorizon) {
+          userPreferencesText += `- Investment horizon: ${userPreferences.investmentHorizon}\n`;
+        }
+        if (userPreferences.preferredSectors && userPreferences.preferredSectors.length > 0) {
+          userPreferencesText += `- Preferred sectors: ${userPreferences.preferredSectors.join(', ')}\n`;
+        }
+        if (userPreferences.preferredAssetClasses && userPreferences.preferredAssetClasses.length > 0) {
+          userPreferencesText += `- Preferred asset classes: ${userPreferences.preferredAssetClasses.join(', ')}\n`;
+        }
+      }
+
+      const result = await model.generateContent(`${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${userQuery}`);
+      return result.response.text();
+    } catch (error) {
+      console.error("Error with advanced model:", error);
+      throw error;
+    }
+  };
+
   // Function to determine if text is a greeting or casual conversation
   const isGreetingOrCasual = (text: string): boolean => {
     const greetings = ['hi', 'hello', 'hey', 'howdy', 'greetings', 'good morning', 'good afternoon', 'good evening'];
     const casual = ['how are you', 'what\'s up', 'how\'s it going', 'nice to meet you'];
     
-    const lowercaseText = text.toLowerCase();
-    
-    return greetings.some(greeting => lowercaseText.includes(greeting)) || 
-           casual.some(phrase => lowercaseText.includes(phrase)) ||
-           lowercaseText.split(' ').length < 3; // Very short messages are likely greetings
+    const lowerText = text.toLowerCase();
+    return greetings.some(g => lowerText === g || lowerText.startsWith(g + ' ')) ||
+           casual.some(c => lowerText.includes(c));
   };
 
-  // Function to format the response text with proper paragraphs and spacing
+  // Format response text to improve readability
   const formatResponseText = (text: string): string => {
-    // Replace single newlines with double newlines for proper paragraphs
-    let formatted = text.replace(/\n(?!\n)/g, '\n\n');
-    
+    // Replace all markdown asterisks with clean formatting
+    let formatted = text;
+
+    // Remove asterisk-based formatting and replace with clean formatting
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '$1'); // Remove bold markers
+    formatted = formatted.replace(/\*(.*?)\*/g, '$1');     // Remove italics markers
+
     // Ensure proper spacing after bullet points
     formatted = formatted.replace(/•\s*(.*?)(?=\n|$)/g, '• $1\n');
-    formatted = formatted.replace(/\*\s*(.*?)(?=\n|$)/g, '• $1\n');
-    
-    // Ensure proper spacing between sections with headers
-    formatted = formatted.replace(/([.:!?])\s*\n\s*([A-Z])/g, '$1\n\n$2');
-    
-    // Ensure double line breaks between numbered items
+
+    // Ensure double newlines between sections
+    formatted = formatted.replace(/([.:!?])\s*\n([A-Z])/g, '$1\n\n$2');
+
+    // Ensure paragraphs have proper spacing
+    formatted = formatted.replace(/\n{3,}/g, '\n\n'); // Replace excessive newlines with double newlines
+    formatted = formatted.replace(/\n(?!\n)/g, '\n\n'); // Replace single newlines with double newlines
+
+    // Ensure proper spacing between numbered list items
     formatted = formatted.replace(/(\d+\.)\s*(.*?)(?=\n|$)/g, '$1 $2\n');
-    
+
+    // Ensure proper spacing after section headers (typically ending with colon)
+    formatted = formatted.replace(/(.*?):\s*\n/g, '$1:\n\n');
+
     return formatted;
   };
-
-  // Function to get relevant news based on user query
-  const getRelevantNews = async (query: string): Promise<string> => {
-    // Check if query contains specific company names or stock symbols
-    const companyRegex = /\b(?:HDFC|SBI|TCS|Reliance|Infosys|ICICI|Wipro|Tata|Adani|Bajaj|Maruti|Suzuki|Bharti|Airtel|Sun|Pharma|ITC|HUL|ONGC|Axis|Bank|Kotak|L&T)\b/i;
-    const stockRegex = /\b[A-Z]{2,5}\b/; // Simple regex for stock symbols
-
-    // Explicitly define the type for newsArticles
-    let newsArticles: NewsArticle[] = [];
-    
-    if (companyRegex.test(query)) {
-      // Extract company name
-      const match = query.match(companyRegex);
-      if (match && match[0]) {
-        newsArticles = await fetchCompanyNews(match[0]);
-      }
-    } else if (stockRegex.test(query)) {
-      // Extract potential stock symbol
-      const match = query.match(stockRegex);
-      if (match && match[0]) {
-        newsArticles = await fetchCompanyNews(match[0]);
-      }
-    } else {
-      // For general financial queries
-      const keywordMap: Record<string, string> = {
-        'investment': 'investment strategy market',
-        'stock': 'stock market trends',
-        'mutual fund': 'mutual funds investment',
-        'market': 'market analysis trends',
-        'crypto': 'cryptocurrency bitcoin ethereum',
-        'gold': 'gold price investment',
-        'real estate': 'real estate property market'
-      };
-      
-      // Find relevant keywords in the query
-      let searchQuery = 'finance market';
-      for (const [keyword, searchTerm] of Object.entries(keywordMap)) {
-        if (query.toLowerCase().includes(keyword)) {
-          searchQuery = searchTerm;
-          break;
-        }
-      }
-      
-      newsArticles = await fetchFinancialNews(searchQuery, 5);
-    }
-    
-    return formatNewsAsString(newsArticles);
-  };
-
-  const callVertexAI = async (userMessage: string, newsData: string = '', systemPromptText: string = ''): Promise<string> => {
-    try {
-      // Format user preferences
-      const preferencesObj = {
-        investmentGoals: userPreferences?.investmentGoals || [],
-        riskTolerance: userPreferences?.riskTolerance || 'Moderate',
-        investmentHorizon: userPreferences?.investmentHorizon || 'Medium-term',
-        preferredSectors: userPreferences?.preferredSectors || [],
-        preferredAssetClasses: userPreferences?.preferredAssetClasses || []
-      };
-
-      console.log("Calling Flask API...");
-      const payload = {
-        message: userMessage,
-        preferences: preferencesObj,
-        systemPrompt: systemPromptText,
-        newsData: newsData
-      };
-      console.log("API payload:", JSON.stringify(payload).substring(0, 200) + "...");
-
-      const response = await fetch('https://aivestor-5.onrender.com/chatbot-api/api/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API error response:", errorText);
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      // Safely parse JSON with error handling
-      let data;
-      try {
-        const responseText = await response.text();
-        if (!responseText || responseText.trim() === '') {
-          throw new Error('Empty response from server');
-        }
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Error parsing JSON response:', parseError);
-        throw new Error('Failed to parse response from chatbot server');
-      }
-      
-      return data.response;
-    } catch (error) {
-      console.error('Error calling Vertex AI:', error);
-      throw error; // Re-throw to trigger fallback
-    }
-  };
-
-  const getAdvancedModelResponse = async (userMessage: string): Promise<string> => {
-    try {
-      const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
-      
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-pro",
-        generationConfig: {
-          temperature: 0.4,
-          topP: 0.95,
-          maxOutputTokens: 8192,
-        },
-        safetySettings: [
-          {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_NONE
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_NONE
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_NONE
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_NONE
-          }
-        ]
-      });
-
-      // System instruction
-      const financialSystemInstruction = `Analyze the current financial market trends and provide a clear, data-driven investment recommendation based on the user's risk appetite, portfolio, and preferences. Use real-time stock data, emerging business insights, and market trends to make firm, actionable suggestions. Consider historical performance, recent economic events, and sector momentum. Avoid vague statements—deliver precise, fact-based guidance. If an investment is risky, state it directly with supporting data, but phrase it in a constructive and non-aggressive manner to maintain a positive user experience. If a trend is strong, highlight the exact reasons and data points backing it. Provide alternative options only if necessary. Also, suggest high-potential emerging industries and businesses based on recent developments. If the user is holding a stock at a loss, acknowledge the situation with empathy and offer rational, unbiased recommendations without unnecessary negativity. At the end, offer additional insights related to the user's past preferences, such as mutual funds, stocks, or risk management strategies. Keep the tone clear, polite, and helpful, ensuring an unbiased and user-friendly experience.`;
-
-      // Format user preferences
-      const preferencesText = `User Preferences:
-- Investment Goals: ${userPreferences?.investmentGoals?.join(', ') || 'Not specified'}
-- Risk Tolerance: ${userPreferences?.riskTolerance || 'Moderate'}
-- Investment Horizon: ${userPreferences?.investmentHorizon || 'Medium-term'}
-- Preferred Sectors: ${userPreferences?.preferredSectors?.join(', ') || 'Not specified'}
-- Preferred Asset Classes: ${userPreferences?.preferredAssetClasses?.join(', ') || 'Not specified'}`;
-
-      // Fix the format: Use a single string prompt instead of an array with roles
-      const combinedPrompt = `${financialSystemInstruction}
-
-I'll analyze financial markets and provide clear, data-driven investment recommendations.
-
-${preferencesText}
-
-User Query: ${userMessage}`;
-
-      const result = await model.generateContent(combinedPrompt);
-      return result.response.text();
-    } catch (error) {
-      console.error('Error with advanced model:', error);
-      throw error;
-    }
-  };
-
+  
+  // Test simple API for debugging
   const testSimpleAPI = async (userMessage: string): Promise<string> => {
     try {
       const response = await fetch('https://aivestor-5.onrender.com/chatbot-api/api/test', {
@@ -575,59 +581,32 @@ Consider this news data when providing your financial analysis and recommendatio
           const result = await model.generateContent(`${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}`);
           botResponse = result.response.text();
         }
-
-        // Add bot response
-        const botMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: botResponse,
-          sender: 'bot',
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, botMessage]);
-      } catch (error) {
-        console.error("Error getting AI response:", error);
-
-        // Add a more descriptive error message
-        const errorMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          text: `I'm sorry, I encountered an error processing your request. Technical details: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
-          sender: 'bot',
-          timestamp: new Date(),
-        };
-
-        setMessages((prev) => [...prev, errorMessage]);
-      } finally {
-        setIsTyping(false);
       }
-    };
 
-  // Improved formatting function to handle markdown and ensure better display
-  const improvedFormatResponseText = (text: string): string => {
-    // Replace all markdown asterisks with clean formatting
-    let formatted = text;
+      // Add bot response
+      const botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: botResponse,
+        sender: 'bot',
+        timestamp: new Date(),
+      };
 
-    // Remove asterisk-based formatting and replace with clean formatting
-    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '$1'); // Remove bold markers
-    formatted = formatted.replace(/\*(.*?)\*/g, '$1');     // Remove italics markers
+      setMessages((prev) => [...prev, botMessage]);
+    } catch (error) {
+      console.error("Error getting AI response:", error);
 
-    // Ensure proper spacing after bullet points
-    formatted = formatted.replace(/•\s*(.*?)(?=\n|$)/g, '• $1\n');
+      // Add a more descriptive error message
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: `I'm sorry, I encountered an error processing your request. Technical details: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+        sender: 'bot',
+        timestamp: new Date(),
+      };
 
-    // Ensure double newlines between sections
-    formatted = formatted.replace(/([.:!?])\s*\n([A-Z])/g, '$1\n\n$2');
-
-    // Ensure paragraphs have proper spacing
-    formatted = formatted.replace(/\n{3,}/g, '\n\n'); // Replace excessive newlines with double newlines
-    formatted = formatted.replace(/\n(?!\n)/g, '\n\n'); // Replace single newlines with double newlines
-
-    // Ensure proper spacing between numbered list items
-    formatted = formatted.replace(/(\d+\.)\s*(.*?)(?=\n|$)/g, '$1 $2\n');
-
-    // Ensure proper spacing after section headers (typically ending with colon)
-    formatted = formatted.replace(/(.*?):\s*\n/g, '$1:\n\n');
-
-    return formatted;
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -645,7 +624,7 @@ Consider this news data when providing your financial analysis and recommendatio
 
   const suggestedQuestions = [
     "What investment strategy suits my risk profile?",
-    "How should I diversify my portfolio?",
+    "How should I diversify my investments?",
     "Explain mutual funds vs. ETFs",
     "What are current market trends?"
   ];
