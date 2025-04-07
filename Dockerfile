@@ -18,6 +18,9 @@ COPY finai-assistant/requirements.txt ./requirements.txt
 COPY finai-assistant/server ./server/
 COPY finai-assistant/api ./api/
 
+# Copy mock data files
+COPY mock-data ./mock-data/
+
 # Create and activate a Python virtual environment
 RUN python3 -m venv /app/venv
 # Install Python dependencies in the virtual environment

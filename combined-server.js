@@ -5,7 +5,20 @@ const { spawn } = require('child_process');
 const path = require('path');
 const cors = require('cors');
 const fs = require('fs');
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+let fetch;
+try {
+  // First try CommonJS style import
+  fetch = require('node-fetch');
+} catch (e) {
+  // Fallback to dynamic import for ESM
+  fetch = (...args) => import('node-fetch').then(({default: fetchFn}) => fetchFn(...args));
+}
+
+// Ensure fetch is a function
+if (typeof fetch !== 'function') {
+  // Handle ESM default export structure
+  fetch = fetch.default || fetch;
+}
 
 // Create main Express app
 const app = express();
