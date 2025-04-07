@@ -224,7 +224,7 @@ const ChatBot: React.FC = () => {
       };
       console.log("API payload:", JSON.stringify(payload).substring(0, 200) + "...");
 
-      const response = await fetch('/chatbot-api/api/generate', {
+      const response = await fetch('https://aivestor-5.onrender.com/chatbot-api/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -238,7 +238,19 @@ const ChatBot: React.FC = () => {
         throw new Error(`API error: ${response.status}`);
       }
 
-      const data = await response.json();
+      // Safely parse JSON with error handling
+      let data;
+      try {
+        const responseText = await response.text();
+        if (!responseText || responseText.trim() === '') {
+          throw new Error('Empty response from server');
+        }
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Error parsing JSON response:', parseError);
+        throw new Error('Failed to parse response from chatbot server');
+      }
+      
       return data.response;
     } catch (error) {
       console.error('Error calling Vertex AI:', error);
@@ -307,7 +319,7 @@ User Query: ${userMessage}`;
 
   const testSimpleAPI = async (userMessage: string): Promise<string> => {
     try {
-      const response = await fetch('/chatbot-api/api/test', {
+      const response = await fetch('https://aivestor-5.onrender.com/chatbot-api/api/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMessage }),
@@ -317,7 +329,19 @@ User Query: ${userMessage}`;
         throw new Error(`API error: ${response.status}`);
       }
 
-      const data = await response.json();
+      // Safely parse JSON with error handling
+      let data;
+      try {
+        const responseText = await response.text();
+        if (!responseText || responseText.trim() === '') {
+          throw new Error('Empty response from server');
+        }
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Error parsing JSON response:', parseError);
+        throw new Error('Failed to parse response from chatbot server');
+      }
+      
       return data.response;
     } catch (error) {
       console.error('Error calling test API:', error);
