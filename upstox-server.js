@@ -894,26 +894,7 @@ const getStockName = (symbol) => {
   return stockNames[symbol] || `${symbol} Stock`;
 };
 
-// Helper function to get stock sector for mocked data
-const getStockSector = (symbol) => {
-  const sectors = {
-    'RELIANCE': 'Energy',
-    'TCS': 'IT',
-    'HDFCBANK': 'Banking',
-    'INFY': 'IT',
-    'ICICIBANK': 'Banking',
-    'SBIN': 'Banking',
-    'BHARTIARTL': 'Telecom',
-    'KOTAKBANK': 'Banking',
-    'WIPRO': 'IT',
-    'TATAMOTORS': 'Auto',
-    'MARUTI': 'Auto',
-    'ITC': 'FMCG',
-    'HINDUNILVR': 'FMCG'
-  };
-  
-  return sectors[symbol] || 'Miscellaneous';
-};
+// We're reusing the getStockSector function defined earlier in the file (line ~369)
 
 // Only start the server if this file is run directly (not required as a module)
 if (require.main === module) {
