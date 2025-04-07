@@ -224,7 +224,7 @@ const ChatBot: React.FC = () => {
       };
       console.log("API payload:", JSON.stringify(payload).substring(0, 200) + "...");
 
-      const response = await fetch('http://localhost:5000/api/generate', {
+      const response = await fetch('/chatbot-api/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -307,7 +307,7 @@ User Query: ${userMessage}`;
 
   const testSimpleAPI = async (userMessage: string): Promise<string> => {
     try {
-      const response = await fetch('http://localhost:5000/api/test', {
+      const response = await fetch('/chatbot-api/api/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMessage }),

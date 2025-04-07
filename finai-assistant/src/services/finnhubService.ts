@@ -415,7 +415,7 @@ export const getTrendingStocks = async (symbols: string[] = []): Promise<Trendin
 export const getStocksFromYFinanceServer = async (): Promise<TrendingStock[]> => {
   try {
     console.log('Fetching Indian stocks from YFinance server');
-    const response = await fetch('https://aivestor-5.onrender.com/stock-api/trending');
+    const response = await fetch('/stock-api/trending');
     
     if (!response.ok) {
       throw new Error(`YFinance server error: ${response.status}`);
@@ -448,7 +448,7 @@ export const getStocksFromYFinanceServer = async (): Promise<TrendingStock[]> =>
 export const getRealTimeStockDataFromYFinanceServer = async (symbol: string): Promise<any> => {
   try {
     console.log(`Fetching real-time stock data for ${symbol} from YFinance server`);
-    const response = await fetch(`https://aivestor-5.onrender.com/stock-api/real-time/${symbol}`);
+    const response = await fetch(`/stock-api/real-time/${symbol}`);
     
     if (!response.ok) {
       throw new Error(`YFinance server error: ${response.status}`);
@@ -469,7 +469,11 @@ export const getRealTimeStockDataFromYFinanceServer = async (symbol: string): Pr
 export const getIndianTrendingStocks = async (): Promise<TrendingStock[]> => {
   try {
     // First try to fetch from our YFinance server
-    return await getStocksFromYFinanceServer();
+    const response = await fetch('/stock-api/indian-trending-stocks');
+    if (!response.ok) {
+      throw new Error(`YFinance server error: ${response.status}`);
+    }
+    return await response.json();
   } catch (error) {
     console.error('Error fetching from YFinance server, falling back to mock data:', error);
     return MOCK_INDIAN_STOCKS;
