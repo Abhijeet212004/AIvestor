@@ -170,59 +170,10 @@ app.use('/chatbot-api', (req, res) => {
     .catch(error => {
       console.error('Error proxying to chatbot server:', error);
       
-      // Check if we have a mock response available for this request
-      if (req.url.includes('/ask') || req.url.includes('/chat')) {
-        try {
-          // Load mock chatbot responses
-          const mockResponses = require('./mock-data/chatbot-responses.json');
-          
-          // Get the query from the request body
-          const userQuery = req.body?.query || req.body?.message || '';
-          console.log('Fallback for chatbot query:', userQuery);
-          
-          // Find the most relevant mock response or use a default
-          let response = "I'm sorry, I can't access the financial data at the moment. Please try again later.";
-          
-          if (mockResponses.responses && mockResponses.responses.length > 0) {
-            // If we have an exact match, use it
-            const exactMatch = mockResponses.responses.find(item => 
-              item.query.toLowerCase() === userQuery.toLowerCase());
-              
-            if (exactMatch) {
-              response = exactMatch.response;
-            } else {
-              // Pick a response based on keywords or randomly if no match
-              const keywords = userQuery.toLowerCase().split(' ');
-              const potentialMatches = mockResponses.responses.filter(item => 
-                keywords.some(keyword => 
-                  item.query.toLowerCase().includes(keyword) && keyword.length > 3));
-              
-              if (potentialMatches.length > 0) {
-                // Pick a random match from potential matches
-                const randomIndex = Math.floor(Math.random() * potentialMatches.length);
-                response = potentialMatches[randomIndex].response;
-              } else {
-                // Pick a completely random response
-                const randomIndex = Math.floor(Math.random() * mockResponses.responses.length);
-                response = mockResponses.responses[randomIndex].response;
-              }
-            }
-          }
-          
-          return res.json({
-            response: response,
-            fallback: true
-          });
-        } catch (mockError) {
-          console.error('Error using mock chatbot data:', mockError);
-        }
-      }
-      
-      // If we couldn't use mock data, return an error
+      // If the Gemini API fails, return an error
       res.status(500).json({ 
         error: 'Internal Server Error', 
-        message: error.message,
-        fallback: true 
+        message: error.message
       });
     });
 });

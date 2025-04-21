@@ -6,14 +6,13 @@ import { useSpring, animated } from 'react-spring';
 // Firebase imports
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config'; // Ensure this path is correct
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { addDocument } from '../services/documentService';
 import { 
   fetchFinancialNews, 
   fetchBusinessHeadlines, 
   fetchCompanyNews, 
-  formatNewsAsString,
-  NewsArticle 
+  formatNewsAsString
 } from '../services/newsService';
 import finnhubService from '../services/finnhubService';
 
@@ -194,41 +193,10 @@ const ChatBot: React.FC = () => {
     }
   };
 
-  // Call the Flask API to get AI response
-  const callVertexAI = async (userQuery: string, newsContext: string = '', systemPrompt: string = ''): Promise<string> => {
-    try {
-      // Use the API with Flask backend
-      const response = await fetch('https://aivestor-5.onrender.com/chatbot-api/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userMessage: userQuery,
-          newsContext: newsContext,
-          systemPrompt: systemPrompt,
-          userPreferences: userPreferences || {} // Send preferences if available
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      if (data && data.response) {
-        return data.response;
-      } else {
-        throw new Error("Invalid response format");
-      }
-    } catch (error) {
-      console.error("Error calling vertex AI:", error);
-      throw error;
-    }
-  };
-
   // Get response from advanced model (JavaScript implementation) as backup
   const getAdvancedModelResponse = async (userQuery: string): Promise<string> => {
     try {
-      const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
+      const genAI = new GoogleGenerativeAI("AIzaSyCQLWXnw5s4DfqI-SZSplhyFKK3JnLLtV0");
       const model = genAI.getGenerativeModel({ 
         model: "gemini-1.5-pro",
         generationConfig: {
@@ -287,20 +255,17 @@ For Indian market questions, provide specific names of actual mutual funds and E
     }
   };
 
-  // Function to determine if text is a greeting or casual conversation
-  const isGreetingOrCasual = (text: string): boolean => {
-    const greetings = ['hi', 'hello', 'hey', 'howdy', 'greetings', 'good morning', 'good afternoon', 'good evening'];
-    const casual = ['how are you', 'what\'s up', 'how\'s it going', 'nice to meet you'];
-    
-    const lowerText = text.toLowerCase();
-    return greetings.some(g => lowerText === g || lowerText.startsWith(g + ' ')) ||
-           casual.some(c => lowerText.includes(c));
-  };
+  // Removed unused isGreetingOrCasual function.
 
   // Format response text to improve readability
+  // Replace '*', '#' with a space in the chatbot-generated text
+  const replaceAsteriskHashWithSpace = (text: string): string => {
+    return text.replace(/[\*#]/g, ' ');
+  };
+
   const formatResponseText = (text: string): string => {
-    // Replace all markdown asterisks with clean formatting
-    let formatted = text;
+    // First, replace '*' and '#' with a space
+    let formatted = replaceAsteriskHashWithSpace(text);
 
     // Remove asterisk-based formatting and replace with clean formatting
     formatted = formatted.replace(/\*\*(.*?)\*\*/g, '$1'); // Remove bold markers
@@ -324,40 +289,8 @@ For Indian market questions, provide specific names of actual mutual funds and E
 
     return formatted;
   };
+
   
-  // Test simple API for debugging
-  const testSimpleAPI = async (userMessage: string): Promise<string> => {
-    try {
-      const response = await fetch('https://aivestor-5.onrender.com/chatbot-api/api/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      // Safely parse JSON with error handling
-      let data;
-      try {
-        const responseText = await response.text();
-        if (!responseText || responseText.trim() === '') {
-          throw new Error('Empty response from server');
-        }
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Error parsing JSON response:', parseError);
-        throw new Error('Failed to parse response from chatbot server');
-      }
-      
-      return data.response;
-    } catch (error) {
-      console.error('Error calling test API:', error);
-      throw error;
-    }
-  };
-
   const handleSendMessage = async () => {
     if (inputValue.trim() === '') return;
     
@@ -436,8 +369,16 @@ For Indian market questions, provide specific names of actual mutual funds and E
             const analysisPrompt = `The current stock price of ${stockName.toUpperCase()} is ₹${formattedPrice}${changeText}.${additionalInfo} Based on this information and considering the user's investment profile (${userPreferences?.riskTolerance || 'Moderate'} risk tolerance with ${userPreferences?.investmentHorizon || 'Medium-term'} horizon), provide a brief analysis and recommendation. The user is interested in ${userPreferences?.preferredSectors?.join(', ') || 'various sectors'} and has goals including ${userPreferences?.investmentGoals?.join(', ') || 'general investing'}.`;
             
             try {
-              const aiAnalysis = await callVertexAI(analysisPrompt, '', '');
-              botResponse = `${priceResponse}${additionalInfo}\n\n${aiAnalysis}`;
+              const genAI = new GoogleGenerativeAI("AIzaSyCQLWXnw5s4DfqI-SZSplhyFKK3JnLLtV0");
+const model = genAI.getGenerativeModel({ 
+  model: "gemini-1.5-pro",
+  generationConfig: {
+    temperature: 0.7,
+    maxOutputTokens: 1024,
+  }
+});
+const aiResult = await model.generateContent(analysisPrompt);
+botResponse = `${priceResponse}${additionalInfo}\n\n${aiResult.response.text()}`;
             } catch (error) {
               // If AI analysis fails, still return the price
               console.error("Failed to get AI analysis:", error);
@@ -446,12 +387,30 @@ For Indian market questions, provide specific names of actual mutual funds and E
           } else {
             // If we couldn't get the price data, proceed with normal AI response
             console.log("Could not find stock price data, falling back to normal response");
-            botResponse = await callVertexAI(inputValue, '', '');
+            const genAI = new GoogleGenerativeAI("AIzaSyCQLWXnw5s4DfqI-SZSplhyFKK3JnLLtV0");
+const model = genAI.getGenerativeModel({ 
+  model: "gemini-1.5-pro",
+  generationConfig: {
+    temperature: 0.7,
+    maxOutputTokens: 1024,
+  }
+});
+const aiResult = await model.generateContent(inputValue);
+botResponse = aiResult.response.text();
           }
         } catch (stockError) {
           console.error("Error fetching stock price:", stockError);
           // Fall back to normal AI processing
-          botResponse = await callVertexAI(inputValue, '', '');
+          const genAI = new GoogleGenerativeAI("AIzaSyCQLWXnw5s4DfqI-SZSplhyFKK3JnLLtV0");
+const model = genAI.getGenerativeModel({ 
+  model: "gemini-1.5-pro",
+  generationConfig: {
+    temperature: 0.7,
+    maxOutputTokens: 1024,
+  }
+});
+const aiResult = await model.generateContent(inputValue);
+botResponse = aiResult.response.text();
         }
       } else {
         // Check if the message is a greeting or casual conversation
@@ -542,8 +501,17 @@ Consider this news data when providing your financial analysis and recommendatio
         if (!isJustGreeting) {
           try {
             // Use the main Vertex AI endpoint instead of the test endpoint
-            botResponse = await callVertexAI(inputValue, relevantNewsText, systemPrompt);
-            botResponse = formatResponseText(botResponse);
+            const genAI = new GoogleGenerativeAI("AIzaSyCQLWXnw5s4DfqI-SZSplhyFKK3JnLLtV0");
+const model = genAI.getGenerativeModel({ 
+  model: "gemini-1.5-pro",
+  generationConfig: {
+    temperature: 0.7,
+    maxOutputTokens: 1024,
+  }
+});
+const prompt = `${systemPrompt}\n\n${userPreferencesText}\n\nUser: ${inputValue}\n\n${relevantNewsText}`;
+const aiResult = await model.generateContent(prompt);
+botResponse = formatResponseText(aiResult.response.text());
           } catch (error) {
             console.error("Error with Flask API:", error);
             
@@ -556,7 +524,7 @@ Consider this news data when providing your financial analysis and recommendatio
               
               // Finally fall back to the basic Gemini model
               console.log("Falling back to basic Gemini API");
-              const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
+              const genAI = new GoogleGenerativeAI("AIzaSyCQLWXnw5s4DfqI-SZSplhyFKK3JnLLtV0");
               const model = genAI.getGenerativeModel({ 
                 model: "gemini-1.5-pro",
                 generationConfig: {
@@ -570,7 +538,7 @@ Consider this news data when providing your financial analysis and recommendatio
           }
         } else {
           // For greetings, continue using the simple model directly
-          const genAI = new GoogleGenerativeAI("AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g");
+          const genAI = new GoogleGenerativeAI("AIzaSyCQLWXnw5s4DfqI-SZSplhyFKK3JnLLtV0");
           const model = genAI.getGenerativeModel({ 
             model: "gemini-1.5-pro",
             generationConfig: {

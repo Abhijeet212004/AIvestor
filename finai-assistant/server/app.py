@@ -79,25 +79,57 @@ def get_rapidapi_stock_price(symbol):
 
 # Update your get_stock_price function to use RapidAPI first
 def get_stock_price(symbol):
+    print(f"Attempting to get stock price for {symbol}")
+    errors = []
+    
     # First try RapidAPI
-    rapidapi_price = get_rapidapi_stock_price(symbol)
-    if rapidapi_price:
-        return rapidapi_price
-        
+    try:
+        rapidapi_price = get_rapidapi_stock_price(symbol)
+        if rapidapi_price:
+            print(f"Successfully got price from RapidAPI: {rapidapi_price}")
+            return rapidapi_price
+    except Exception as e:
+        errors.append(f"RapidAPI error: {str(e)}")
+    
     # Then try yfinance
     try:
-        print(f"Falling back to yfinance for {symbol}")
+        print(f"Trying yfinance for {symbol}")
         ticker = yf.Ticker(symbol)
         ticker_data = ticker.history(period="1d")
         
         if not ticker_data.empty:
             latest_price = ticker_data['Close'].iloc[-1]
-            return str(round(latest_price, 2))
-        
-        # Continue with your existing fallbacks...
+            price_str = str(round(latest_price, 2))
+            print(f"Successfully got price from yfinance: {price_str}")
+            return price_str
+        else:
+            errors.append("yfinance returned empty data")
     except Exception as e:
-        print(f"Error with yfinance for {symbol}: {e}")
-        return get_yahoo_finance_price(symbol)
+        errors.append(f"yfinance error: {str(e)}")
+    
+    # Try direct Yahoo Finance API
+    try:
+        print(f"Trying direct Yahoo Finance API for {symbol}")
+        price = get_yahoo_finance_price(symbol)
+        if price and price != "Price data unavailable":
+            print(f"Successfully got price from Yahoo Finance API: {price}")
+            return price
+    except Exception as e:
+        errors.append(f"Yahoo Finance API error: {str(e)}")
+    
+    # Try Alpha Vantage as last resort
+    try:
+        print(f"Trying Alpha Vantage for {symbol}")
+        price = get_alpha_vantage_price(symbol)
+        if price and price != "Price data unavailable":
+            print(f"Successfully got price from Alpha Vantage: {price}")
+            return price
+    except Exception as e:
+        errors.append(f"Alpha Vantage error: {str(e)}")
+    
+    # If all else fails, log errors and return failure
+    print(f"All methods failed to get price for {symbol}. Errors: {errors}")
+    return "Price data unavailable"
 
 def get_yahoo_finance_price(symbol):
     try:
@@ -223,6 +255,9 @@ def generate_content():
             "tesla": "TSLA",
             "facebook": "META",
             "meta": "META",
+            # Add commodity symbols
+            "gold": "GC=F",  # Gold futures
+            "silver": "SI=F",  # Silver futures
             # Add more mappings as needed
         }
         
@@ -230,14 +265,53 @@ def generate_content():
         stock_price_info = ""
         found_stocks = []
 
+        # Check for direct price questions like "what is X stock price"
+        price_question_patterns = [
+            "what is", "what's", "what are", "tell me", "show me", "price of", "price for",
+            "how much is", "how much are", "current price", "current value"
+        ]
+        
+        is_price_question = any(pattern in user_message.lower() for pattern in price_question_patterns)
+        
+        # Special case for gold investment query
+        if "gold" in user_message.lower() and ("invest" in user_message.lower() or "price" in user_message.lower()):
+            found_stocks.append("gold")
+            print("Fetching gold price information")
+            try:
+                # Try gold futures price
+                gold_price = get_stock_price("GC=F")
+                if gold_price != "Price data unavailable":
+                    stock_price_info += f"Current Gold price (per troy ounce): ${gold_price}\n"
+                    stock_price_info += "Gold is traditionally considered a safe-haven asset during market uncertainty.\n"
+                    
+                    # Try to get GLD ETF price as additional reference
+                    try:
+                        gld_ticker = yf.Ticker("GLD")
+                        gld_data = gld_ticker.history(period="1d")
+                        if not gld_data.empty:
+                            gld_price = round(gld_data['Close'].iloc[-1], 2)
+                            stock_price_info += f"SPDR Gold Shares ETF (GLD) price: ${gld_price}\n"
+                    except Exception as e:
+                        print(f"Error fetching GLD data: {e}")
+            except Exception as e:
+                print(f"Error fetching gold price: {e}")
+                stock_price_info += "Gold price data is temporarily unavailable.\n"
+
+        # Process other stocks
         for stock_name, symbol in stock_symbols.items():
+            # Skip gold as we've already processed it specially above
+            if stock_name == "gold" and "gold" in found_stocks:
+                continue
+                
             if stock_name.lower() in user_message.lower():
                 found_stocks.append(stock_name)
                 print(f"Fetching price for {stock_name} ({symbol})")
                 price = get_stock_price(symbol)
                 
                 if price != "Price data unavailable":
-                    stock_price_info += f"Current {stock_name.title()} stock price: ₹{price}\n"
+                    # Use proper currency symbol based on exchange
+                    currency_symbol = "₹" if ".NS" in symbol else "$"
+                    stock_price_info += f"Current {stock_name.title()} stock price: {currency_symbol}{price}\n"
                     
                     # Get additional company details
                     company_details = get_company_details(symbol)
@@ -256,6 +330,9 @@ def generate_content():
         if not stock_price_info and found_stocks:
             stock_names = ", ".join([s.title() for s in found_stocks])
             stock_price_info = f"Note: Real-time stock price data for {stock_names} is temporarily unavailable. Analysis will be based on recent trends and fundamentals.\n"
+        
+        # For users wanting exact answers (like in the example conversation)
+        exact_answer_requested = "exact" in user_message.lower() or "specific" in user_message.lower()
         
         # Format preferences as string
         preferences_str = ""
@@ -302,7 +379,15 @@ Analyze the current financial market trends and provide a clear, data-driven inv
             # Configure the Gemini API
             genai.configure(api_key="AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g")
             
-            # FIXED: Create model with system_instruction in constructor
+            # Skip AI for simple price lookups if requested
+            if is_price_question and found_stocks and (exact_answer_requested or "i want exact answers" in user_message.lower()):
+                print("User requested exact stock price info - skipping AI processing")
+                return jsonify({
+                    'response': stock_price_info.strip(),
+                    'status': 'success'
+                })
+            
+            # Create model with system_instruction in constructor
             model = genai.GenerativeModel(
                 model_name="gemini-1.5-pro",
                 system_instruction=si_text
@@ -343,11 +428,13 @@ Analyze the current financial market trends and provide a clear, data-driven inv
                     
                     for pattern in placeholder_patterns:
                         if pattern in cleaned_response.lower():
-                            price_info = f"₹{get_stock_price(stock_symbols[stock_name])}"
+                            currency_symbol = "₹" if ".NS" in stock_symbols[stock_name] else "$"
+                            price_info = f"{currency_symbol}{get_stock_price(stock_symbols[stock_name])}"
                             cleaned_response = cleaned_response.replace(cleaned_response[cleaned_response.lower().find(pattern):].split("]")[0] + "]", price_info)
                 
                 # Replace general placeholders
-                cleaned_response = cleaned_response.replace("[insert real-time Zomato stock price from a reliable source like Google Finance or a brokerage platform]", stock_price_info.strip())
+                if stock_price_info:
+                    cleaned_response = cleaned_response.replace("[insert real-time stock price from a reliable source like Google Finance or a brokerage platform]", stock_price_info.strip())
                 cleaned_response = cleaned_response.replace("[cite specific data points", "Recent data shows")
                 
                 return jsonify({
@@ -362,11 +449,144 @@ Analyze the current financial market trends and provide a clear, data-driven inv
             
         except Exception as e:
             print(f"Error generating content with Gemini: {e}")
+            print("Falling back to simple_generate")
             # Fall back to the simple endpoint which is working reliably
             return simple_generate()
     
     except Exception as e:
         print(f"Error processing request: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
+@app.route('/api/simple', methods=['POST'])
+def simple_generate():
+    """A simple endpoint that returns real stock data without using AI APIs"""
+    try:
+        data = request.json
+        user_message = data.get('message', '')
+        
+        # Check if this is a stock price query
+        stock_symbols = {
+            "zomato": "ZOMATO.NS",
+            "reliance": "RELIANCE.NS",
+            "tcs": "TCS.NS",
+            "infosys": "INFY.NS", 
+            "hdfc": "HDFCBANK.NS",
+            "sbi": "SBIN.NS",
+            "icici": "ICICIBANK.NS",
+            "axis": "AXISBANK.NS",
+            "tata": "TATAMOTORS.NS",
+            "adani": "ADANIPORTS.NS",
+            "bajaj": "BAJFINANCE.NS",
+            "wipro": "WIPRO.NS",
+            "hul": "HINDUNILVR.NS",
+            "itc": "ITC.NS",
+            # Add common US stocks that users might ask about
+            "apple": "AAPL",
+            "microsoft": "MSFT",
+            "amazon": "AMZN", 
+            "google": "GOOGL",
+            "netflix": "NFLX",
+            "tesla": "TSLA",
+            "facebook": "META",
+            "meta": "META",
+        }
+        
+        response_text = ""
+        
+        # Find mentioned stocks
+        found_stock = False
+        for stock_name, symbol in stock_symbols.items():
+            if stock_name.lower() in user_message.lower():
+                found_stock = True
+                # Get real price using yfinance or fallback methods
+                try:
+                    price = get_stock_price(symbol)
+                    
+                    # Determine currency symbol based on stock exchange
+                    currency_symbol = "₹" if ".NS" in symbol else "$"
+                    
+                    # Get additional company details
+                    company_details = get_company_details(symbol)
+                    
+                    response_text = f"{stock_name.title()}'s current stock price is {currency_symbol}{price}.\n\n"
+                    
+                    if company_details:
+                        response_text += "Additional details:\n"
+                        response_text += f"- Previous Close: {company_details.get('previousClose', 'N/A')}\n"
+                        response_text += f"- Open: {company_details.get('open', 'N/A')}\n"
+                        response_text += f"- Day Range: {company_details.get('dayLow', 'N/A')} - {company_details.get('dayHigh', 'N/A')}\n"
+                        response_text += f"- Volume: {company_details.get('volume', 'N/A')}\n"
+                        response_text += f"- Market Cap: {company_details.get('marketCap', 'N/A')}\n"
+                        response_text += f"- Beta: {company_details.get('beta', 'N/A')}\n"
+                    
+                    break
+                except Exception as e:
+                    print(f"Error fetching stock data: {e}")
+                    response_text = f"Unable to fetch price data for {stock_name} at this time."
+        
+        # Check for keyword "market" for market overview request
+        if "market" in user_message.lower() and "overview" in user_message.lower():
+            try:
+                response_text = "Current Market Overview:\n\n"
+                # Check a few major indices
+                indices = {
+                    "NIFTY 50": "^NSEI",
+                    "SENSEX": "^BSESN",
+                    "S&P 500": "^GSPC",
+                    "NASDAQ": "^IXIC"
+                }
+                
+                for index_name, index_symbol in indices.items():
+                    try:
+                        ticker = yf.Ticker(index_symbol)
+                        ticker_data = ticker.history(period="1d")
+                        if not ticker_data.empty:
+                            price = round(ticker_data['Close'].iloc[-1], 2)
+                            change = round(ticker_data['Close'].iloc[-1] - ticker_data['Open'].iloc[0], 2)
+                            change_percent = round(change / ticker_data['Open'].iloc[0] * 100, 2)
+                            direction = "up" if change > 0 else "down"
+                            
+                            response_text += f"{index_name}: {price} ({direction} {abs(change)} / {abs(change_percent)}%)\n"
+                    except Exception as e:
+                        print(f"Error fetching index data for {index_name}: {e}")
+                        response_text += f"{index_name}: Data currently unavailable\n"
+            except Exception as e:
+                print(f"Error generating market overview: {e}")
+                response_text = "Unable to fetch market overview data at this time."
+        
+        # If asking about gold prices
+        if "gold" in user_message.lower() and ("invest" in user_message.lower() or "price" in user_message.lower()):
+            try:
+                # Use yfinance to get gold ETF price as a proxy
+                gold_symbol = "GLD"  # SPDR Gold Shares ETF
+                ticker = yf.Ticker(gold_symbol)
+                ticker_data = ticker.history(period="1d")
+                if not ticker_data.empty:
+                    gold_price = round(ticker_data['Close'].iloc[-1], 2)
+                    response_text = f"Current Gold ETF (GLD) price: ${gold_price}.\n\n"
+                    response_text += "Gold is often considered a safe-haven asset during economic uncertainty. "
+                    response_text += "Recent price trends show " + ("strength" if ticker_data['Close'].iloc[-1] > ticker_data['Open'].iloc[0] else "weakness") + " in the gold market.\n\n"
+                    response_text += "When considering investing in gold, you can choose between physical gold, gold ETFs, sovereign gold bonds, or gold mutual funds depending on your investment goals and horizon."
+            except Exception as e:
+                print(f"Error fetching gold data: {e}")
+                response_text = "Unable to fetch gold price data at this time."
+        
+        # Default response if no specific data query was found
+        if not response_text:
+            response_text = f"You asked: {user_message}\n\nPlease ask about specific stocks, market overview, or investment topics for detailed information."
+            
+        return jsonify({
+            'response': response_text,
+            'status': 'success'
+        })
+        
+    except Exception as e:
+        print(f"Error in simple_generate: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -381,79 +601,37 @@ def test_endpoint():
         data = request.json
         query = data.get('message', '')
         
-        # Simple stock price lookup
-        if "zomato" in query.lower():
-            price = get_stock_price("ZOMATO.NS")
-            return jsonify({
-                'response': f"Zomato's current stock price is ₹{price}.\n\nBased on recent performance and market trends, I recommend a HOLD position on Zomato with a target price of ₹180 over the next 6 months. The company is showing improved profitability but faces stiff competition and regulatory challenges.",
-                'status': 'success'
-            })
-        else:
-            return jsonify({
-                'response': f"You asked: {query}\n\nThis is a test response without using Vertex AI.",
-                'status': 'success'
-            })
-    except Exception as e:
-        return jsonify({'error': str(e), 'status': 'error'}), 500
-
-@app.route('/api/simple', methods=['POST'])
-def simple_generate():
-    """A simple endpoint that returns real stock data without using AI APIs"""
-    try:
-        data = request.json
-        user_message = data.get('message', '')
-        
-        # Check if this is a stock price query
+        # Use the same stock lookup mechanism as simple_generate for consistency
         stock_symbols = {
             "zomato": "ZOMATO.NS",
             "reliance": "RELIANCE.NS",
-            # ... other stock symbols
+            "tcs": "TCS.NS",
+            "infosys": "INFY.NS",
+            "apple": "AAPL",
+            "microsoft": "MSFT",
+            "amazon": "AMZN", 
+            "google": "GOOGL",
+            "tesla": "TSLA"
         }
         
-        response_text = ""
-        
-        # Find mentioned stocks
         for stock_name, symbol in stock_symbols.items():
-            if stock_name.lower() in user_message.lower():
-                # Get real price using yfinance (which should be more reliable)
-                try:
-                    ticker = yf.Ticker(symbol)
-                    ticker_data = ticker.history(period="1d")
-                    if not ticker_data.empty:
-                        price = round(ticker_data['Close'].iloc[-1], 2)
-                        
-                        response_text = f"""
-Zomato's current stock price is ₹{price}.
-
-Based on technical analysis and recent performance, Zomato shows moderate growth potential but with high volatility. With your moderate risk tolerance and medium-term investment horizon, I recommend allocating no more than 5% of your portfolio to individual stocks like Zomato.
-
-For a more balanced approach aligned with your retirement goals, consider:
-
-1. Technology ETFs: NIFTYBEES (Nifty 50 ETF) or KOTAKITECH (Kotak IT ETF) for exposure to the tech sector with lower risk
-2. Diversified mutual funds: SBI Technology Opportunities Fund or ICICI Prudential Technology Fund for managed exposure to the tech sector
-3. Index funds: UTI Nifty Index Fund or HDFC Index Fund-NIFTY 50 Plan for broad market exposure
-
-These options provide better risk-adjusted returns for your retirement goals while maintaining exposure to the technology sector you prefer.
-"""
-                        break
-                except Exception as e:
-                    print(f"Error fetching stock data: {e}")
-                    response_text = f"Unable to fetch price data for {stock_name} at this time."
+            if stock_name.lower() in query.lower():
+                price = get_stock_price(symbol)
+                currency_symbol = "₹" if ".NS" in symbol else "$"
+                
+                return jsonify({
+                    'response': f"{stock_name.title()}'s current stock price is {currency_symbol}{price}.\n\nBased on recent performance and market trends, this stock shows {('positive momentum' if float(price) > 100 else 'volatile performance')}. Please note this is a simplified analysis without Gemini AI.",
+                    'status': 'success'
+                })
         
-        # Default response if no stocks mentioned
-        if not response_text:
-            response_text = f"You asked: {user_message}\n\nPlease ask about a specific stock for real-time data."
-            
+        # No stock mentioned
         return jsonify({
-            'response': response_text,
+            'response': f"You asked: {query}\n\nThis is a test response without using the AI model. For specific stock information, please mention a stock name in your query.",
             'status': 'success'
         })
-        
     except Exception as e:
-        return jsonify({
-            'error': str(e),
-            'status': 'error'
-        }), 500
+        print(f"Error in test_endpoint: {e}")
+        return jsonify({'error': str(e), 'status': 'error'}), 500
 
 @app.route('/api/health')
 def health_check():

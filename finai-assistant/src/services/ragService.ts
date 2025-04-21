@@ -2,7 +2,7 @@ import { searchDocuments, formatDocumentsAsString } from "./documentService";
 import { fetchFinancialNews, formatNewsAsString } from "./newsService";
 
 // Gemini API Key
-const GEMINI_API_KEY = "AIzaSyBBINhHV1--cR8VisK8UKxf0oEfeNhmd_g";
+const GEMINI_API_KEY = "AIzaSyCQLWXnw5s4DfqI-SZSplhyFKK3JnLLtV0";
 
 // System prompt template for the RAG implementation
 const createSystemPrompt = (context: string, preferences: string, newsData: string, question: string): string => {
